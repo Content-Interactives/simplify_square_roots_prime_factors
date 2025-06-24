@@ -14,7 +14,7 @@ See second interactive in this read for inspiration: https://flexbooks.ck12.org/
 - The number should be a random number between 1 and 200 and able to be simplified (at least 1 pair of prime factors. See full list below)
 
 ### Step 2
-- After clicking the next arrow '>', the number is shown to split into its prime factors. 
+- After clicking the next arrow `>`, the number is shown to split into its prime factors. 
 - Students are then to click on all pairs of prime factors. For each pair, there will be an animation of the numbers combining as they move out of the square root and to the left.
 - Clicked numbers can highlight. If a third number is clicked, unhighlight the first one.
 - Once two are correctly highlighted, start the animation automatically.
