@@ -10,7 +10,7 @@ See second interactive in this read for inspiration: https://flexbooks.ck12.org/
 
 ## How it Works
 ### Step 1
-- The first line will show the given number in the square root. 
+- It will first show the given number in the square root. 
 - The number should be a random number between 1 and 200 and able to be simplified (at least 1 pair of prime factors. See full list below)
 
 ### Step 2
