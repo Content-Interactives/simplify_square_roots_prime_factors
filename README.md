@@ -1,5 +1,5 @@
-# simplify_square_roots_prime_factors live site:
-https://content-interactives.github.io/simplify_square_roots_prime_factors/
+# simplify_square_roots_prime_factors
+live site: https://content-interactives.github.io/simplify_square_roots_prime_factors/
 
 ## Simplify Square Roots using the Prime Factorization Method
 

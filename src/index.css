@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: 'Proxima Nova';
+  src: url('./assets/Proxima Nova/proximanova_regular.ttf') format('truetype'),
+       url('./assets/Proxima Nova/proximanova_regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Proxima Nova';
+  src: url('./assets/Proxima Nova/proximanova_bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+* {
+  font-family: 'Proxima Nova', Arial, sans-serif !important;
+}
