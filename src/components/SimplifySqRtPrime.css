@@ -49,6 +49,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .prime-factorization-random-btn {
@@ -75,10 +76,88 @@
   background: #00ae5a;
 }
 
+.prime-factorization-next-btn {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #008545;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.prime-factorization-next-btn:hover {
+  background: #00ae5a;
+  transform: translateX(-50%) scale(1.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
 .katex .mord {
   font-family: 'Proxima Nova', Arial, sans-serif !important;
 }
 
 .katex {
   font-size: 45px;
+}
+
+.sqrt-animate {
+  transition: transform 0.45s cubic-bezier(0.4, 0.2, 0.2, 1), opacity 0.45s cubic-bezier(0.4, 0.2, 0.2, 1);
+  opacity: 1;
+  transform: translateY(0);
+}
+.sqrt-animate-up-fade {
+  opacity: 1;
+  transform: translateY(-24px);
+}
+
+.prime-factors-fade-in {
+  opacity: 0;
+  animation: fadeInFromTop 0.45s cubic-bezier(0.4, 0.2, 0.2, 1) forwards;
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+@keyframes fadeInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.center-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sqrt-fade-in {
+  opacity: 0;
+  animation: sqrtFadeIn 0.45s cubic-bezier(0.4, 0.2, 0.2, 1) forwards;
+}
+
+@keyframes sqrtFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 } 

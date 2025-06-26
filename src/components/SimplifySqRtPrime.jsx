@@ -14,8 +14,28 @@ const getRandomNumber = (exclude) => {
 	return num;
 };
 
+// Helper to get prime factors as an array
+function getPrimeFactors(n) {
+	const factors = [];
+	let d = 2;
+	while (n > 1) {
+		while (n % d === 0) {
+			factors.push(d);
+			n /= d;
+		}
+		d++;
+		if (d * d > n && n > 1) {
+			factors.push(n);
+			break;
+		}
+	}
+	return factors;
+}
+
 const SimplifySqRtPrime = () => {
 	const [number, setNumber] = useState(null);
+	const [showFactors, setShowFactors] = useState(false);
+	const [animate, setAnimate] = useState(false);
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
@@ -23,16 +43,36 @@ const SimplifySqRtPrime = () => {
 
 	const handleRandomClick = () => {
 		setNumber((prev) => getRandomNumber(prev));
+		setShowFactors(false);
+		setAnimate(false);
 	};
+
+	const handleNextClick = () => {
+		setAnimate(true);
+		setTimeout(() => setShowFactors(true), 350); // match animation duration
+	};
+
+	let factors = number ? getPrimeFactors(number) : [];
+	let factorString = factors.length > 0 ? factors.join(' \\times ') : '';
 
 	return (
 		<div className="prime-factorization-outer">
 			<div className="prime-factorization-title">Prime Factorization</div>
 			<button className="prime-factorization-random-btn" onClick={handleRandomClick}>Random</button>
-			<div className="prime-factorization-inner">
+			<div className="prime-factorization-inner center-content">
 				{number && (
-					<BlockMath math={`\\sqrt{${number}}`} />
+					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}`}>
+						<BlockMath math={`\\sqrt{${number}}`} />
+					</div>
 				)}
+				{showFactors && (
+					<div className="prime-factors-fade-in center-content">
+						<BlockMath math={`\\sqrt{${factorString}}`} />
+					</div>
+				)}
+				<button className="prime-factorization-next-btn" onClick={handleNextClick} disabled={animate || showFactors}>
+					&gt;
+				</button>
 			</div>
 		</div>
 	);
