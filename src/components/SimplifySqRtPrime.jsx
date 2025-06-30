@@ -32,10 +32,24 @@ function getPrimeFactors(n) {
 	return factors;
 }
 
+// Component for individual clickable numbers
+const ClickableNumber = ({ number, index, isHighlighted, onClick }) => {
+	return (
+		<span 
+			className={`clickable-number ${isHighlighted ? 'highlighted' : ''}`}
+			onClick={() => onClick(index)}
+		>
+			{number}
+		</span>
+	);
+};
+
 const SimplifySqRtPrime = () => {
 	const [number, setNumber] = useState(null);
 	const [showFactors, setShowFactors] = useState(false);
 	const [animate, setAnimate] = useState(false);
+	const [fadeOut, setFadeOut] = useState(false);
+	const [highlightedIndices, setHighlightedIndices] = useState([]);
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
@@ -45,29 +59,72 @@ const SimplifySqRtPrime = () => {
 		setNumber((prev) => getRandomNumber(prev));
 		setShowFactors(false);
 		setAnimate(false);
+		setFadeOut(false);
+		setHighlightedIndices([]);
 	};
 
 	const handleNextClick = () => {
 		setAnimate(true);
-		setTimeout(() => setShowFactors(true), 350); // match animation duration
+		setFadeOut(true);
+		// Wait for fade out to complete, then show factors
+		setTimeout(() => {
+			setShowFactors(true);
+			setFadeOut(false);
+		}, 350); // match fade out duration
+	};
+
+	const handleNumberClick = (index) => {
+		setHighlightedIndices(prev => {
+			// If this number is already highlighted, remove it
+			if (prev.includes(index)) {
+				return prev.filter(i => i !== index);
+			}
+			// If we already have 2 highlighted numbers, remove the first one
+			if (prev.length >= 2) {
+				return [prev[1], index];
+			}
+			// Otherwise, add this number to the highlighted list
+			return [...prev, index];
+		});
 	};
 
 	let factors = number ? getPrimeFactors(number) : [];
-	let factorString = factors.length > 0 ? factors.join(' \\times ') : '';
+	
+	// Create the factor string with clickable numbers
+	const renderFactorString = () => {
+		if (factors.length === 0) return '';
+		
+		return factors.map((factor, index) => (
+			<React.Fragment key={index}>
+				<ClickableNumber
+					number={factor}
+					index={index}
+					isHighlighted={highlightedIndices.includes(index)}
+					onClick={handleNumberClick}
+				/>
+				{index < factors.length - 1 && <span className="times-symbol"> × </span>}
+			</React.Fragment>
+		));
+	};
 
 	return (
 		<div className="prime-factorization-outer">
 			<div className="prime-factorization-title">Prime Factorization</div>
 			<button className="prime-factorization-random-btn" onClick={handleRandomClick}>Random</button>
 			<div className="prime-factorization-inner center-content">
-				{number && (
-					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}`}>
+				{number && !showFactors && (
+					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}${fadeOut ? ' sqrt-fade-out' : ''}`}>
 						<BlockMath math={`\\sqrt{${number}}`} />
 					</div>
 				)}
 				{showFactors && (
 					<div className="prime-factors-fade-in center-content">
-						<BlockMath math={`\\sqrt{${factorString}}`} />
+						<div className="factor-string-container custom-sqrt-radical">
+							<span className="sqrt-visible">√</span>
+							<span className="factor-string">
+								{renderFactorString()}
+							</span>
+						</div>
 					</div>
 				)}
 				<button className="prime-factorization-next-btn" onClick={handleNextClick} disabled={animate || showFactors}>
