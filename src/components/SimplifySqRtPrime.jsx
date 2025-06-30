@@ -50,9 +50,13 @@ const SimplifySqRtPrime = () => {
 	const [animate, setAnimate] = useState(false);
 	const [fadeOut, setFadeOut] = useState(false);
 	const [highlightedIndices, setHighlightedIndices] = useState([]);
+	const [removedIndices, setRemovedIndices] = useState([]);
+	const [pairOrder, setPairOrder] = useState([]);
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
+		setRemovedIndices([]);
+		setPairOrder([]);
 	}, []);
 
 	const handleRandomClick = () => {
@@ -61,50 +65,92 @@ const SimplifySqRtPrime = () => {
 		setAnimate(false);
 		setFadeOut(false);
 		setHighlightedIndices([]);
+		setRemovedIndices([]);
+		setPairOrder([]);
 	};
 
 	const handleNextClick = () => {
 		setAnimate(true);
 		setFadeOut(true);
-		// Wait for fade out to complete, then show factors
 		setTimeout(() => {
 			setShowFactors(true);
 			setFadeOut(false);
 		}, 350); // match fade out duration
 	};
 
+	let factors = number ? getPrimeFactors(number) : [];
+
 	const handleNumberClick = (index) => {
+		if (removedIndices.includes(index)) return;
 		setHighlightedIndices(prev => {
-			// If this number is already highlighted, remove it
 			if (prev.includes(index)) {
 				return prev.filter(i => i !== index);
 			}
-			// If we already have 2 highlighted numbers, remove the first one
+			if (prev.length === 1) {
+				const firstIdx = prev[0];
+				if (
+					factors[firstIdx] === factors[index] &&
+					firstIdx !== index &&
+					!removedIndices.includes(firstIdx) &&
+					!removedIndices.includes(index)
+				) {
+					// Only add the number to pairOrder if not already present
+					setPairOrder(order => order.includes(factors[index]) ? order : [...order, factors[index]]);
+					setRemovedIndices(inds => [...inds, firstIdx, index]);
+					return [];
+				}
+			}
 			if (prev.length >= 2) {
 				return [prev[1], index];
 			}
-			// Otherwise, add this number to the highlighted list
 			return [...prev, index];
 		});
 	};
 
-	let factors = number ? getPrimeFactors(number) : [];
-	
-	// Create the factor string with clickable numbers
 	const renderFactorString = () => {
-		if (factors.length === 0) return '';
-		
-		return factors.map((factor, index) => (
-			<React.Fragment key={index}>
+		const visibleIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
+		if (visibleIndices.length === 0) return '';
+		return visibleIndices.map((i, idx) => (
+			<React.Fragment key={i}>
 				<ClickableNumber
-					number={factor}
-					index={index}
-					isHighlighted={highlightedIndices.includes(index)}
+					number={factors[i]}
+					index={i}
+					isHighlighted={highlightedIndices.includes(i)}
 					onClick={handleNumberClick}
 				/>
-				{index < factors.length - 1 && <span className="times-symbol"> × </span>}
+				{idx < visibleIndices.length - 1 && <span className="times-symbol"> × </span>}
 			</React.Fragment>
 		));
+	};
+
+	const renderOutsideNumbers = () => {
+		if (removedIndices.length === 0 || pairOrder.length === 0) return null;
+		// Count how many times each number was removed
+		const removedCounts = {};
+		removedIndices.forEach(i => {
+			const n = factors[i];
+			removedCounts[n] = (removedCounts[n] || 0) + 1;
+		});
+		// For each number in pairOrder (in order of appearance), if at least one pair, show it once
+		const seen = new Set();
+		const outside = [];
+		pairOrder.forEach(n => {
+			if (!seen.has(n) && Math.floor((removedCounts[n] || 0) / 2) > 0) {
+				outside.push(n);
+				seen.add(n);
+			}
+		});
+		if (outside.length === 0) return null;
+		return (
+			<span className="outside-radical">
+				{outside.map((n, idx) => (
+					<React.Fragment key={idx}>
+						{n}
+						{idx < outside.length - 1 && <span className="times-symbol"> × </span>}
+					</React.Fragment>
+				))}
+			</span>
+		);
 	};
 
 	return (
@@ -120,6 +166,7 @@ const SimplifySqRtPrime = () => {
 				{showFactors && (
 					<div className="prime-factors-fade-in center-content">
 						<div className="factor-string-container custom-sqrt-radical">
+							{renderOutsideNumbers()}
 							<span className="sqrt-visible">√</span>
 							<span className="factor-string">
 								{renderFactorString()}
