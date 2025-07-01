@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import 'katex/dist/katex.min.css';
 import { BlockMath } from 'react-katex';
 import './SimplifySqRtPrime.css';
@@ -33,11 +33,12 @@ function getPrimeFactors(n) {
 }
 
 // Component for individual clickable numbers
-const ClickableNumber = ({ number, index, isHighlighted, onClick }) => {
+const ClickableNumber = ({ number, index, isHighlighted, onClick, isRemoved }) => {
 	return (
-		<span 
-			className={`clickable-number ${isHighlighted ? 'highlighted' : ''}`}
-			onClick={() => onClick(index)}
+		<span
+			className={`clickable-number ${isHighlighted ? 'highlighted' : ''} ${isRemoved ? 'removed' : ''}`}
+			onClick={isRemoved ? undefined : () => onClick(index)}
+			style={{ pointerEvents: isRemoved ? 'none' : 'auto', opacity: isRemoved ? 0.3 : 1 }}
 		>
 			{number}
 		</span>
@@ -53,6 +54,7 @@ const SimplifySqRtPrime = () => {
 	const [removedIndices, setRemovedIndices] = useState([]);
 	const [outsideNumbers, setOutsideNumbers] = useState([]);
 	const [history, setHistory] = useState([]);
+	const lastMovedPair = useRef([]);
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
@@ -103,9 +105,12 @@ const SimplifySqRtPrime = () => {
 	const handleNumberClick = (index) => {
 		if (removedIndices.includes(index)) return;
 		setHighlightedIndices(prev => {
+			// Remove highlight if already highlighted
 			if (prev.includes(index)) {
+				lastMovedPair.current = []; // reset on deselect
 				return prev.filter(i => i !== index);
 			}
+			// Only run move-out logic if this is the second highlight and both are not removed
 			if (prev.length === 1) {
 				const firstIdx = prev[0];
 				if (
@@ -114,17 +119,31 @@ const SimplifySqRtPrime = () => {
 					!removedIndices.includes(firstIdx) &&
 					!removedIndices.includes(index)
 				) {
-					// Store history for back navigation
-					setHistory(hist => [...hist, { outsideNumbers: [...outsideNumbers], removedIndices: [...removedIndices] }]);
-					// Add only the value of the first number in the pair
-					setOutsideNumbers(nums => [...nums, factors[firstIdx]]);
-					setRemovedIndices(inds => [...inds, firstIdx, index]);
+					// Check if this pair was just moved out
+					const pairKey = [firstIdx, index].sort().join('-');
+					if (lastMovedPair.current[0] === pairKey) {
+						return [];
+					}
+					lastMovedPair.current[0] = pairKey;
+					setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
+					setOutsideNumbers(prevNums => [...prevNums, factors[index]]);
+					setHistory(hist => [
+						...hist,
+						{
+							outsideNumbers: [...outsideNumbers, factors[index]],
+							removedIndices: [...removedIndices, firstIdx, index]
+						}
+					]);
+					// Clear highlights so this can't run again for the same pair
 					return [];
 				}
 			}
+			// Otherwise, add this index to highlights and reset lastMovedPair
 			if (prev.length >= 2) {
+				lastMovedPair.current = [];
 				return [prev[1], index];
 			}
+			lastMovedPair.current = [];
 			return [...prev, index];
 		});
 	};
@@ -139,6 +158,7 @@ const SimplifySqRtPrime = () => {
 					index={i}
 					isHighlighted={highlightedIndices.includes(i)}
 					onClick={handleNumberClick}
+					isRemoved={removedIndices.includes(i)}
 				/>
 				{idx < visibleIndices.length - 1 && <span className="times-symbol"> × </span>}
 			</React.Fragment>
@@ -146,18 +166,14 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const renderOutsideNumbers = () => {
-		if (removedIndices.length === 0 || outsideNumbers.length === 0) return null;
-		// Only deduplicate for display, not for state/history
-		const uniqueValues = [];
-		outsideNumbers.forEach(val => {
-			if (!uniqueValues.includes(val)) uniqueValues.push(val);
-		});
+		if (outsideNumbers.length === 0) return null;
+		// Show every number moved out, in order, with duplicates (one per pair)
 		return (
 			<span className="outside-radical">
-				{uniqueValues.map((value, idx) => (
+				{outsideNumbers.map((value, idx) => (
 					<React.Fragment key={idx}>
 						{value}
-						{idx < uniqueValues.length - 1 && <span className="times-symbol"> × </span>}
+						{idx < outsideNumbers.length - 1 && <span className="times-symbol"> × </span>}
 					</React.Fragment>
 				))}
 			</span>
