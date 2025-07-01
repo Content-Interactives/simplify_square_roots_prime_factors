@@ -52,10 +52,12 @@ const SimplifySqRtPrime = () => {
 	const [showFactors, setShowFactors] = useState(false);
 	const [animate, setAnimate] = useState(false);
 	const [fadeOut, setFadeOut] = useState(false);
+	const [fadeOutFirstStep, setFadeOutFirstStep] = useState(false);
 	const [highlightedIndices, setHighlightedIndices] = useState([]);
 	const [removedIndices, setRemovedIndices] = useState([]);
 	const [outsideNumbers, setOutsideNumbers] = useState([]);
 	const [history, setHistory] = useState([]);
+	const [telescopeLoaded, setTelescopeLoaded] = useState(false);
 	const lastMovedPair = useRef([]);
 
 	useEffect(() => {
@@ -69,6 +71,7 @@ const SimplifySqRtPrime = () => {
 		setShowFactors(false);
 		setAnimate(false);
 		setFadeOut(false);
+		setFadeOutFirstStep(false);
 		setHighlightedIndices([]);
 		setRemovedIndices([]);
 		setOutsideNumbers([]);
@@ -78,18 +81,21 @@ const SimplifySqRtPrime = () => {
 	const handleNextClick = () => {
 		setAnimate(true);
 		setFadeOut(true);
+		setFadeOutFirstStep(true);
+		setTelescopeLoaded(false);
 		setTimeout(() => {
 			setShowFactors(true);
 			setFadeOut(false);
-		}, 350); // match fade out duration
+			setFadeOutFirstStep(false);
+		}, 350);
 	};
 
 	const handleBackClick = () => {
 		if (showFactors) {
-			// Go directly back to the beginning step, reset all pair-related state
 			setShowFactors(false);
 			setAnimate(false);
 			setFadeOut(false);
+			setFadeOutFirstStep(false);
 			setHighlightedIndices([]);
 			setRemovedIndices([]);
 			setOutsideNumbers([]);
@@ -102,12 +108,10 @@ const SimplifySqRtPrime = () => {
 	const handleNumberClick = (index) => {
 		if (removedIndices.includes(index)) return;
 		setHighlightedIndices(prev => {
-			// Remove highlight if already highlighted
 			if (prev.includes(index)) {
-				lastMovedPair.current = []; // reset on deselect
+				lastMovedPair.current = [];
 				return prev.filter(i => i !== index);
 			}
-			// Only run move-out logic if this is the second highlight and both are not removed
 			if (prev.length === 1) {
 				const firstIdx = prev[0];
 				if (
@@ -116,7 +120,6 @@ const SimplifySqRtPrime = () => {
 					!removedIndices.includes(firstIdx) &&
 					!removedIndices.includes(index)
 				) {
-					// Check if this pair was just moved out
 					const pairKey = [firstIdx, index].sort().join('-');
 					if (lastMovedPair.current[0] === pairKey) {
 						return [];
@@ -131,11 +134,9 @@ const SimplifySqRtPrime = () => {
 							removedIndices: [...removedIndices, firstIdx, index]
 						}
 					]);
-					// Clear highlights so this can't run again for the same pair
 					return [];
 				}
 			}
-			// Otherwise, add this index to highlights and reset lastMovedPair
 			if (prev.length >= 2) {
 				lastMovedPair.current = [];
 				return [prev[1], index];
@@ -164,7 +165,6 @@ const SimplifySqRtPrime = () => {
 
 	const renderOutsideNumbers = () => {
 		if (outsideNumbers.length === 0) return null;
-		// Show every number moved out, in order, with duplicates (one per pair)
 		return (
 			<span className="outside-radical">
 				{outsideNumbers.map((value, idx) => (
@@ -188,7 +188,7 @@ const SimplifySqRtPrime = () => {
 					</div>
 				)}
 				{number && !showFactors && (
-					<div className="flexi-wave-bubble-container">
+					<div className={`flexi-wave-bubble-container ${fadeOutFirstStep ? 'flexi-first-step-fade-out' : ''}`}>
 						<img src={FlexiWave} alt="Flexi Wave" className="flexi-wave-bottom-left" />
 						<div className="speech-bubble">
 							Split the number into its prime factors.
@@ -208,13 +208,19 @@ const SimplifySqRtPrime = () => {
 				)}
 				{showFactors && (
 					<div className="flexi-wave-bubble-container">
-						<img src={FlexiTelescope} alt="Flexi Telescope" className="flexi-wave-bottom-left" />
-						<div className="speech-bubble">
-							Find all the matching pairs.
-						</div>
+						<img 
+							src={FlexiTelescope} 
+							alt="Flexi Telescope" 
+							className="flexi-wave-bottom-left flexi-telescope-fade-in"
+							onLoad={() => setTelescopeLoaded(true)}
+						/>
+						{telescopeLoaded && (
+							<div className="speech-bubble speech-bubble-fade-in">
+								Find all the matching pairs.
+							</div>
+						)}
 					</div>
 				)}
-				{/* Back arrow button */}
 				<button
 					className={`prime-factorization-back-btn ${!showFactors ? 'disabled' : ''}`}
 					onClick={handleBackClick}
@@ -222,7 +228,6 @@ const SimplifySqRtPrime = () => {
 				>
 					&lt;
 				</button>
-				{/* Next button */}
 				<button
 					className="prime-factorization-next-btn"
 					onClick={handleNextClick}
