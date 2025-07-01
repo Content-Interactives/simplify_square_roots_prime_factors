@@ -51,12 +51,13 @@ const SimplifySqRtPrime = () => {
 	const [fadeOut, setFadeOut] = useState(false);
 	const [highlightedIndices, setHighlightedIndices] = useState([]);
 	const [removedIndices, setRemovedIndices] = useState([]);
-	const [pairOrder, setPairOrder] = useState([]);
+	const [outsideNumbers, setOutsideNumbers] = useState([]);
+	const [history, setHistory] = useState([]);
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
 		setRemovedIndices([]);
-		setPairOrder([]);
+		setOutsideNumbers([]);
 	}, []);
 
 	const handleRandomClick = () => {
@@ -66,7 +67,7 @@ const SimplifySqRtPrime = () => {
 		setFadeOut(false);
 		setHighlightedIndices([]);
 		setRemovedIndices([]);
-		setPairOrder([]);
+		setOutsideNumbers([]);
 	};
 
 	const handleNextClick = () => {
@@ -76,6 +77,24 @@ const SimplifySqRtPrime = () => {
 			setShowFactors(true);
 			setFadeOut(false);
 		}, 350); // match fade out duration
+	};
+
+	const handleBackClick = () => {
+		if (showFactors) {
+			if (history.length > 0) {
+				const prev = history[history.length - 1];
+				setOutsideNumbers(prev.outsideNumbers);
+				setRemovedIndices(prev.removedIndices);
+				setHistory(hist => hist.slice(0, -1));
+			} else {
+				// No more pairs to undo, immediately go back to original sqrt step
+				setShowFactors(false);
+				setAnimate(false);
+				setFadeOut(false);
+				setHighlightedIndices([]);
+			}
+		}
+		// If showFactors is false, do nothing (button should be disabled)
 	};
 
 	let factors = number ? getPrimeFactors(number) : [];
@@ -94,8 +113,10 @@ const SimplifySqRtPrime = () => {
 					!removedIndices.includes(firstIdx) &&
 					!removedIndices.includes(index)
 				) {
-					// Only add the number to pairOrder if not already present
-					setPairOrder(order => order.includes(factors[index]) ? order : [...order, factors[index]]);
+					// Store history for back navigation
+					setHistory(hist => [...hist, { outsideNumbers: [...outsideNumbers], removedIndices: [...removedIndices] }]);
+					// Add only the value of the first number in the pair
+					setOutsideNumbers(nums => [...nums, factors[firstIdx]]);
 					setRemovedIndices(inds => [...inds, firstIdx, index]);
 					return [];
 				}
@@ -124,29 +145,18 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const renderOutsideNumbers = () => {
-		if (removedIndices.length === 0 || pairOrder.length === 0) return null;
-		// Count how many times each number was removed
-		const removedCounts = {};
-		removedIndices.forEach(i => {
-			const n = factors[i];
-			removedCounts[n] = (removedCounts[n] || 0) + 1;
+		if (removedIndices.length === 0 || outsideNumbers.length === 0) return null;
+		// Only deduplicate for display, not for state/history
+		const uniqueValues = [];
+		outsideNumbers.forEach(val => {
+			if (!uniqueValues.includes(val)) uniqueValues.push(val);
 		});
-		// For each number in pairOrder (in order of appearance), if at least one pair, show it once
-		const seen = new Set();
-		const outside = [];
-		pairOrder.forEach(n => {
-			if (!seen.has(n) && Math.floor((removedCounts[n] || 0) / 2) > 0) {
-				outside.push(n);
-				seen.add(n);
-			}
-		});
-		if (outside.length === 0) return null;
 		return (
 			<span className="outside-radical">
-				{outside.map((n, idx) => (
+				{uniqueValues.map((value, idx) => (
 					<React.Fragment key={idx}>
-						{n}
-						{idx < outside.length - 1 && <span className="times-symbol"> × </span>}
+						{value}
+						{idx < uniqueValues.length - 1 && <span className="times-symbol"> × </span>}
 					</React.Fragment>
 				))}
 			</span>
@@ -174,8 +184,23 @@ const SimplifySqRtPrime = () => {
 						</div>
 					</div>
 				)}
-				<button className="prime-factorization-next-btn" onClick={handleNextClick} disabled={animate || showFactors}>
-					&gt;
+				{/* Back arrow button */}
+				<button
+					className="prime-factorization-next-btn"
+					onClick={handleBackClick}
+					disabled={!showFactors}
+					style={{ left: 'calc(50% - 48px)', transform: 'translateX(-50%)' }}
+				>
+					{'<'}
+				</button>
+				{/* Next button */}
+				<button
+					className="prime-factorization-next-btn"
+					onClick={handleNextClick}
+					disabled={animate || showFactors}
+					style={{ left: 'calc(50% + 48px)', transform: 'translateX(-50%)' }}
+				>
+					{'>'}
 				</button>
 			</div>
 		</div>
