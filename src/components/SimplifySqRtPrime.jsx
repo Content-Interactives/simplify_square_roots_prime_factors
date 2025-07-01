@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import 'katex/dist/katex.min.css';
 import { BlockMath } from 'react-katex';
 import './SimplifySqRtPrime.css';
+import FlexiWave from '../assets/All Flexi Poses/PNG/Flexi_Wave.png';
+import FlexiTelescope from '../assets/All Flexi Poses/PNG/Flexi_Telescope.png';
 
 const SIMPLIFIABLE_NUMBERS = [4, 8, 9, 12, 16, 18, 20, 24, 25, 27, 28, 32, 36, 40, 44, 45, 48, 49, 50, 52, 54, 56, 60, 63, 64, 72, 75, 76, 80, 81, 84, 88, 90, 96, 98, 100, 104, 108, 112, 116, 117, 120, 121, 124, 125, 126, 128, 132, 135, 136, 140, 144, 147, 148, 150, 152, 153, 156, 160, 162, 164, 168, 169, 171, 172, 176, 180, 184, 188, 189, 192, 196, 198, 200];
 
@@ -190,6 +192,14 @@ const SimplifySqRtPrime = () => {
 						<BlockMath math={`\\sqrt{${number}}`} />
 					</div>
 				)}
+				{number && !showFactors && (
+					<div className="flexi-wave-bubble-container">
+						<img src={FlexiWave} alt="Flexi Wave" className="flexi-wave-bottom-left" />
+						<div className="speech-bubble">
+							Split the number into its prime factors.
+						</div>
+					</div>
+				)}
 				{showFactors && (
 					<div className="prime-factors-fade-in center-content">
 						<div className="factor-string-container custom-sqrt-radical">
@@ -198,6 +208,14 @@ const SimplifySqRtPrime = () => {
 							<span className="factor-string">
 								{renderFactorString()}
 							</span>
+						</div>
+					</div>
+				)}
+				{showFactors && (
+					<div className="flexi-wave-bubble-container">
+						<img src={FlexiTelescope} alt="Flexi Telescope" className="flexi-wave-bottom-left" />
+						<div className="speech-bubble">
+							Find all the matching pairs.
 						</div>
 					</div>
 				)}
