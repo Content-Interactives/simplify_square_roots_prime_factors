@@ -221,12 +221,11 @@ const SimplifySqRtPrime = () => {
 				)}
 				{/* Back arrow button */}
 				<button
-					className="prime-factorization-next-btn"
+					className={`prime-factorization-back-btn ${!showFactors ? 'disabled' : ''}`}
 					onClick={handleBackClick}
 					disabled={!showFactors}
-					style={{ left: 'calc(50% - 48px)', transform: 'translateX(-50%)' }}
 				>
-					{'<'}
+					&lt;
 				</button>
 				{/* Next button */}
 				<button

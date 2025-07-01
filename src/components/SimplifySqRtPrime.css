@@ -104,6 +104,39 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
+.prime-factorization-back-btn {
+  position: absolute;
+  bottom: 16px;
+  left: calc(50% - 48px);
+  background: #008545;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.prime-factorization-back-btn:hover:not(.disabled) {
+  background: #00ae5a;
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.prime-factorization-back-btn.disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.3;
+}
+
 .katex .mord {
   font-family: 'Proxima Nova', Arial, sans-serif !important;
 }
