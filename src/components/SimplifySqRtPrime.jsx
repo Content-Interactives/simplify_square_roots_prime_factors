@@ -86,20 +86,15 @@ const SimplifySqRtPrime = () => {
 
 	const handleBackClick = () => {
 		if (showFactors) {
-			if (history.length > 0) {
-				const prev = history[history.length - 1];
-				setOutsideNumbers(prev.outsideNumbers);
-				setRemovedIndices(prev.removedIndices);
-				setHistory(hist => hist.slice(0, -1));
-			} else {
-				// No more pairs to undo, immediately go back to original sqrt step
-				setShowFactors(false);
-				setAnimate(false);
-				setFadeOut(false);
-				setHighlightedIndices([]);
-			}
+			// Go directly back to the beginning step, reset all pair-related state
+			setShowFactors(false);
+			setAnimate(false);
+			setFadeOut(false);
+			setHighlightedIndices([]);
+			setRemovedIndices([]);
+			setOutsideNumbers([]);
+			setHistory([]);
 		}
-		// If showFactors is false, do nothing (button should be disabled)
 	};
 
 	let factors = number ? getPrimeFactors(number) : [];
