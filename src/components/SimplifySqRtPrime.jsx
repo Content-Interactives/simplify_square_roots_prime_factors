@@ -68,6 +68,7 @@ const SimplifySqRtPrime = () => {
 		setHighlightedIndices([]);
 		setRemovedIndices([]);
 		setOutsideNumbers([]);
+		setHistory([]);
 	};
 
 	const handleNextClick = () => {
