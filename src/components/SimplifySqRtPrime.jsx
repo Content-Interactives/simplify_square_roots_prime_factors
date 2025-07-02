@@ -36,17 +36,18 @@ function getPrimeFactors(n) {
 }
 
 // Component for individual clickable numbers
-const ClickableNumber = ({ number, index, isHighlighted, onClick, isRemoved }) => {
-	return (
-		<span
-			className={`clickable-number ${isHighlighted ? 'highlighted' : ''} ${isRemoved ? 'removed' : ''}`}
-			onClick={isRemoved ? undefined : () => onClick(index)}
-			style={{ pointerEvents: isRemoved ? 'none' : 'auto', opacity: isRemoved ? 0.3 : 1 }}
-		>
-			{number}
-		</span>
-	);
-};
+const ClickableNumber = ({ number, index, isHighlighted, onClick, isRemoved, disabled }) => (
+	<span
+		className={`clickable-number ${isHighlighted ? 'highlighted' : ''} ${isRemoved ? 'removed' : ''} ${disabled ? 'disabled' : ''}`}
+		onClick={disabled || isRemoved ? undefined : () => onClick(index)}
+		style={{
+			pointerEvents: disabled || isRemoved ? 'none' : 'auto',
+			opacity: isRemoved ? 0.3 : 1
+		}}
+	>
+		{number}
+	</span>
+);
 
 const SimplifySqRtPrime = () => {
 	const [number, setNumber] = useState(null);
@@ -60,6 +61,7 @@ const SimplifySqRtPrime = () => {
 	const [history, setHistory] = useState([]);
 	const [telescopeLoaded, setTelescopeLoaded] = useState(false);
 	const lastMovedPair = useRef([]);
+	const [showSimplified, setShowSimplified] = useState(false);
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
@@ -80,6 +82,10 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const handleNextClick = () => {
+		if (showFactors && countAvailablePairs() === 0 && !showSimplified) {
+			setShowSimplified(true);
+			return;
+		}
 		setAnimate(true);
 		setFadeOut(true);
 		setFadeOutFirstStep(true);
@@ -89,6 +95,7 @@ const SimplifySqRtPrime = () => {
 			setFadeOut(false);
 			setFadeOutFirstStep(false);
 			setAnimate(false);
+			setShowSimplified(false);
 		}, 350);
 	};
 
@@ -151,6 +158,7 @@ const SimplifySqRtPrime = () => {
 	const renderFactorString = () => {
 		const visibleIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
 		if (visibleIndices.length === 0) return '';
+		const disableNumbers = showFactors && countAvailablePairs() === 0;
 		return visibleIndices.map((i, idx) => (
 			<React.Fragment key={i}>
 				<ClickableNumber
@@ -159,6 +167,7 @@ const SimplifySqRtPrime = () => {
 					isHighlighted={highlightedIndices.includes(i)}
 					onClick={handleNumberClick}
 					isRemoved={removedIndices.includes(i)}
+					disabled={disableNumbers}
 				/>
 				{idx < visibleIndices.length - 1 && <span className="times-symbol"> × </span>}
 			</React.Fragment>
@@ -220,33 +229,50 @@ const SimplifySqRtPrime = () => {
 						</div>
 					</div>
 				)}
-				{showFactors && (
+				{showFactors && showSimplified ? (
 					<div className="prime-factors-fade-in center-content">
 						<div className="factor-string-container custom-sqrt-radical">
-							{renderOutsideNumbers()}
-							<span className="sqrt-visible">√</span>
-							<span className="factor-string">
-								{renderFactorString()}
-							</span>
+							{(() => {
+								const coefficient = outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1;
+								const remainingIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
+								const radicand = remainingIndices.length > 0 ? remainingIndices.map(i => factors[i]).reduce((a, b) => a * b, 1) : 1;
+								return (
+									<span style={{ fontSize: 45, fontWeight: 700 }}>
+										{coefficient !== 1 ? coefficient : ''}
+										{radicand !== 1 ? <span>√{radicand}</span> : ''}
+										{coefficient === 1 && radicand === 1 ? '1' : ''}
+									</span>
+								);
+							})()}
 						</div>
 					</div>
-				)}
-				{showFactors && (
-					<div className="flexi-wave-bubble-container">
-						<img
-							src={countAvailablePairs() === 0 ? FlexiWoah : FlexiTelescope}
-							alt={countAvailablePairs() === 0 ? "Flexi Woah" : "Flexi Telescope"}
-							className="flexi-wave-bottom-left flexi-telescope-fade-in"
-							onLoad={() => setTelescopeLoaded(true)}
-						/>
-						{telescopeLoaded && (
-							<div className="speech-bubble speech-bubble-fade-in">
-								{countAvailablePairs() === 0
-									? "You found all matching pairs!"
-									: "Find all the matching pairs."}
+				) : showFactors && (
+					<>
+						<div className="prime-factors-fade-in center-content">
+							<div className="factor-string-container custom-sqrt-radical">
+								{renderOutsideNumbers()}
+								<span className="sqrt-visible">√</span>
+								<span className="factor-string">
+									{renderFactorString()}
+								</span>
 							</div>
-						)}
-					</div>
+						</div>
+						<div className="flexi-wave-bubble-container">
+							<img
+								src={countAvailablePairs() === 0 ? FlexiWoah : FlexiTelescope}
+								alt={countAvailablePairs() === 0 ? "Flexi Woah" : "Flexi Telescope"}
+								className="flexi-wave-bottom-left flexi-telescope-fade-in"
+								onLoad={() => setTelescopeLoaded(true)}
+							/>
+							{telescopeLoaded && (
+								<div className="speech-bubble speech-bubble-fade-in">
+									{countAvailablePairs() === 0
+										? "You found all matching pairs!"
+										: "Find all the matching pairs."}
+								</div>
+							)}
+						</div>
+					</>
 				)}
 				<button
 					className={`prime-factorization-back-btn ${!showFactors ? 'disabled' : ''}`}
