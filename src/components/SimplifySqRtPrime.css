@@ -330,4 +330,14 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+}
+
+button.prime-factorization-next-btn.disabled,
+.prime-factorization-next-btn.disabled,
+.prime-factorization-next-btn:disabled {
+  background: #008545 !important;
+  opacity: 0.3 !important;
+  color: #fff !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
 } 

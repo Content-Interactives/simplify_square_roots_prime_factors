@@ -177,6 +177,8 @@ const SimplifySqRtPrime = () => {
 		);
 	};
 
+	const isNextDisabled = animate || (showFactors && hasRemainingPairs());
+
 	return (
 		<div className="prime-factorization-outer">
 			<div className="prime-factorization-title">Prime Factorization</div>
@@ -229,9 +231,9 @@ const SimplifySqRtPrime = () => {
 					&lt;
 				</button>
 				<button
-					className="prime-factorization-next-btn"
+					className={`prime-factorization-next-btn${isNextDisabled ? ' disabled' : ''}`}
 					onClick={handleNextClick}
-					disabled={animate || showFactors}
+					disabled={isNextDisabled}
 					style={{ left: 'calc(50% + 48px)', transform: 'translateX(-50%)' }}
 				>
 					{'>'}
