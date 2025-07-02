@@ -87,6 +87,7 @@ const SimplifySqRtPrime = () => {
 			setShowFactors(true);
 			setFadeOut(false);
 			setFadeOutFirstStep(false);
+			setAnimate(false);
 		}, 350);
 	};
 
@@ -177,7 +178,28 @@ const SimplifySqRtPrime = () => {
 		);
 	};
 
-	const isNextDisabled = animate || (showFactors && hasRemainingPairs());
+	const nextDisabled = animate || (showFactors && countAvailablePairs() > 0);
+	console.log('nextDisabled:', nextDisabled, 'countAvailablePairs:', countAvailablePairs(), 'removedIndices:', removedIndices);
+
+	// Function to count all available same-number pairs under the radical
+	function countAvailablePairs() {
+		const remainingFactors = factors.filter((_, i) => !removedIndices.includes(i));
+		const factorCounts = {};
+		remainingFactors.forEach(factor => {
+			factorCounts[factor] = (factorCounts[factor] || 0) + 1;
+		});
+		return Object.values(factorCounts).reduce((sum, count) => sum + Math.floor(count / 2), 0);
+	}
+
+	const prevPairCount = useRef(countAvailablePairs());
+
+	useEffect(() => {
+		const currentCount = countAvailablePairs();
+		if (prevPairCount.current > 0 && currentCount === 0) {
+			console.log('All available pairs have been selected!');
+		}
+		prevPairCount.current = currentCount;
+	}, [removedIndices, factors]);
 
 	return (
 		<div className="prime-factorization-outer">
@@ -231,9 +253,9 @@ const SimplifySqRtPrime = () => {
 					&lt;
 				</button>
 				<button
-					className={`prime-factorization-next-btn${isNextDisabled ? ' disabled' : ''}`}
+					className={`prime-factorization-next-btn${nextDisabled ? ' disabled' : ''}`}
 					onClick={handleNextClick}
-					disabled={isNextDisabled}
+					disabled={nextDisabled}
 					style={{ left: 'calc(50% + 48px)', transform: 'translateX(-50%)' }}
 				>
 					{'>'}
