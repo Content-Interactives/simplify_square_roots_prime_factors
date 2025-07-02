@@ -5,6 +5,7 @@ import './SimplifySqRtPrime.css';
 import FlexiWave from '../assets/All Flexi Poses/PNG/Flexi_Wave.png';
 import FlexiTelescope from '../assets/All Flexi Poses/PNG/Flexi_Telescope.png';
 import FlexiWoah from '../assets/All Flexi Poses/PNG/Flexi_Woah.png';
+import FlexiStars from '../assets/All Flexi Poses/PNG/Flexi_Stars.png';
 
 const SIMPLIFIABLE_NUMBERS = [4, 8, 9, 12, 16, 18, 20, 24, 25, 27, 28, 32, 36, 40, 44, 45, 48, 49, 50, 52, 54, 56, 60, 63, 64, 72, 75, 76, 80, 81, 84, 88, 90, 96, 98, 100, 104, 108, 112, 116, 117, 120, 121, 124, 125, 126, 128, 132, 135, 136, 140, 144, 147, 148, 150, 152, 153, 156, 160, 162, 164, 168, 169, 171, 172, 176, 180, 184, 188, 189, 192, 196, 198, 200];
 
@@ -188,7 +189,7 @@ const SimplifySqRtPrime = () => {
 		);
 	};
 
-	const nextDisabled = animate || (showFactors && countAvailablePairs() > 0);
+	const nextDisabled = animate || (showFactors && (countAvailablePairs() > 0 || showSimplified));
 	console.log('nextDisabled:', nextDisabled, 'countAvailablePairs:', countAvailablePairs(), 'removedIndices:', removedIndices);
 
 	// Function to count all available same-number pairs under the radical
@@ -230,22 +231,34 @@ const SimplifySqRtPrime = () => {
 					</div>
 				)}
 				{showFactors && showSimplified ? (
-					<div className="prime-factors-fade-in center-content">
-						<div className="factor-string-container custom-sqrt-radical">
-							{(() => {
-								const coefficient = outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1;
-								const remainingIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
-								const radicand = remainingIndices.length > 0 ? remainingIndices.map(i => factors[i]).reduce((a, b) => a * b, 1) : 1;
-								return (
-									<span style={{ fontSize: 45, fontWeight: 700 }}>
-										{coefficient !== 1 ? coefficient : ''}
-										{radicand !== 1 ? <span>√{radicand}</span> : ''}
-										{coefficient === 1 && radicand === 1 ? '1' : ''}
-									</span>
-								);
-							})()}
+					<>
+						<div className="prime-factors-fade-in center-content">
+							<div className="factor-string-container custom-sqrt-radical">
+								{(() => {
+									const coefficient = outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1;
+									const remainingIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
+									const radicand = remainingIndices.length > 0 ? remainingIndices.map(i => factors[i]).reduce((a, b) => a * b, 1) : 1;
+									return (
+										<span style={{ fontSize: 45 }}>
+											{coefficient !== 1 ? coefficient : ''}
+											{radicand !== 1 ? <span>√{radicand}</span> : ''}
+											{coefficient === 1 && radicand === 1 ? '1' : ''}
+										</span>
+									);
+								})()}
+							</div>
 						</div>
-					</div>
+						<div className="flexi-wave-bubble-container">
+							<img
+								src={FlexiStars}
+								alt="Flexi Stars"
+								className="flexi-wave-bottom-left flexi-telescope-fade-in"
+							/>
+							<div className="speech-bubble speech-bubble-fade-in">
+								It's simplified!
+							</div>
+						</div>
+					</>
 				) : showFactors && (
 					<>
 						<div className="prime-factors-fade-in center-content">
