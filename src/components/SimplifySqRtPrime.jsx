@@ -101,7 +101,11 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const handleBackClick = () => {
-		if (showFactors) {
+		if (showSimplified) {
+			// If we're at the simplified step, go back to prime factorization step
+			setShowSimplified(false);
+		} else if (showFactors) {
+			// If we're at the prime factorization step, go back to beginning
 			setShowFactors(false);
 			setAnimate(false);
 			setFadeOut(false);
@@ -288,9 +292,9 @@ const SimplifySqRtPrime = () => {
 					</>
 				)}
 				<button
-					className={`prime-factorization-back-btn ${!showFactors ? 'disabled' : ''}`}
+					className={`prime-factorization-back-btn ${!(showFactors || showSimplified) ? 'disabled' : ''}`}
 					onClick={handleBackClick}
-					disabled={!showFactors}
+					disabled={!(showFactors || showSimplified)}
 				>
 					&lt;
 				</button>
