@@ -279,7 +279,7 @@
   content: '';
   position: absolute;
   left: -18px;
-  bottom: 12px;
+  bottom: 18px;
   width: 0;
   height: 0;
   border-top: 12px solid transparent;
@@ -340,4 +340,12 @@ button.prime-factorization-next-btn.disabled,
   color: #fff !important;
   cursor: not-allowed !important;
   box-shadow: none !important;
+} 
+
+.flexi-wave-bubble-container .speech-bubble.speech-bubble-fade-in {
+  /* Optionally adjust margin if needed */
+}
+.flexi-wave-bubble-container .speech-bubble.speech-bubble-fade-in:after {
+  bottom: 6px;
+  left: -12px;
 } 
