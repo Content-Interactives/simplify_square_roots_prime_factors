@@ -47,7 +47,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
     }
   });
   const numberWidth = 28; // increase width for larger numbers
-  const radicalStart = 38;
+  const radicalBuffer = 0; // no extra left buffer
+  const radicalStart = 38 + radicalBuffer;
   const radicalEnd = radicalStart + (expression.length * numberWidth);
   const radicalHeight = 80;
   const radicalYOffset = 18;
@@ -59,9 +60,12 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   const radicalBarXStart = radicalStart - 14;
   const radicalBarXEnd = radicalEnd + 10;
   const getSquareRootWidth = () => radicalEnd;
+  // Render coefficient as array or single value
+  let coeffArray = Array.isArray(coefficient) ? coefficient : (coefficient > 1 ? [coefficient] : []);
+  // Remove extraLeftMargin logic
   return (
     <span style={{ display: 'inline-flex', alignItems: 'flex-end' }}>
-      {coefficient > 1 && (
+      {coeffArray.length > 0 && (
         <span style={{
           fontFamily: 'Proxima Nova, Arial, sans-serif',
           fontWeight: 'bold',
@@ -72,7 +76,14 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
           display: 'inline-block',
           position: 'relative',
           top: '1px',
-        }}>{coefficient}</span>
+        }}>
+          {coeffArray.map((n, i) => (
+            <React.Fragment key={i}>
+              {n}
+              {i < coeffArray.length - 1 && <span style={{ margin: '0 4px' }}>×</span>}
+            </React.Fragment>
+          ))}
+        </span>
       )}
       <span style={{ display: 'inline-flex', alignItems: 'flex-end', position: 'relative' }}>
         <svg
@@ -90,23 +101,26 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
             strokeLinejoin="round"
           />
           {expression.map((item, index) => {
-            const xPosition = radicalStart + (index * numberWidth);
+            let xPosition = radicalStart + (index * numberWidth);
+            // No extraLeftMargin logic here
             if (item.type === 'number') {
-              // Use visibleIndices to map to the original factor index
               const factorIdx = visibleIndices[index / 2 | 0];
               const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
+              // Calculate rect width based on number of digits
+              const numStr = String(item.value);
+              const rectWidth = Math.max(20, numStr.length * 22); // 22px per digit, min 20px
               return (
                 <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default' }}>
                   <rect
                     x={xPosition}
                     y={radicalTop + radicalYOffset}
-                    width="20"
+                    width={rectWidth}
                     height="32"
                     fill={isHighlighted ? '#fef08a' : 'transparent'}
                     onClick={highlightable && handleNumberClick ? () => handleNumberClick(factorIdx) : undefined}
                   />
                   <text
-                    x={xPosition + 10}
+                    x={xPosition + rectWidth / 2}
                     y={radicalTop + radicalYOffset + 24}
                     textAnchor="middle"
                     fontFamily="Proxima Nova, Arial, sans-serif"
@@ -204,6 +218,7 @@ const SimplifySqRtPrime = () => {
 	const handleRandomClick = () => {
 		setNumber((prev) => getRandomNumber(prev));
 		setShowFactors(false);
+		setShowSimplified(false);
 		setAnimate(false);
 		setFadeOut(false);
 		setFadeOutFirstStep(false);
@@ -394,14 +409,20 @@ const SimplifySqRtPrime = () => {
 					<>
 						<div className="prime-factors-fade-in center-content">
 							<div className="factor-string-container custom-sqrt-radical">
-								{renderSVGStepRadical({
-									coefficient: outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1,
-									numbers: visibleIndices.map(i => factors[i]),
-									highlightable: true,
-									highlightedIndices,
-									handleNumberClick,
-									visibleIndices
-								})}
+								{visibleIndices.length === 0 ? (
+									<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 'bold', fontSize: 38, color: '#000' }}>
+										{outsideNumbers.length > 0 ? outsideNumbers.join(' × ') : ''}
+									</span>
+								) : (
+									renderSVGStepRadical({
+										coefficient: outsideNumbers,
+										numbers: visibleIndices.map(i => factors[i]),
+										highlightable: true,
+										highlightedIndices,
+										handleNumberClick,
+										visibleIndices
+									})
+								)}
 							</div>
 						</div>
 						<div className="flexi-wave-bubble-container">
