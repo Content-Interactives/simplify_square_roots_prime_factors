@@ -417,9 +417,9 @@ const SimplifySqRtPrime = () => {
 									renderSVGStepRadical({
 										coefficient: outsideNumbers,
 										numbers: visibleIndices.map(i => factors[i]),
-										highlightable: true,
+										highlightable: showFactors && countAvailablePairs() > 0,
 										highlightedIndices,
-										handleNumberClick,
+										handleNumberClick: showFactors && countAvailablePairs() > 0 ? handleNumberClick : null,
 										visibleIndices
 									})
 								)}
