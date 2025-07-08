@@ -36,6 +36,113 @@ function getPrimeFactors(n) {
 	return factors;
 }
 
+// Helper for SVG radical rendering (shared by both steps)
+function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [] }) {
+  // Build expression array
+  const expression = [];
+  numbers.forEach((value, idx) => {
+    expression.push({ type: 'number', value, id: idx });
+    if (idx < numbers.length - 1) {
+      expression.push({ type: 'symbol', value: '×', id: `x-${idx}` });
+    }
+  });
+  const numberWidth = 28; // increase width for larger numbers
+  const radicalStart = 38;
+  const radicalEnd = radicalStart + (expression.length * numberWidth);
+  const radicalHeight = 80;
+  const radicalYOffset = 18;
+  const radicalTop = 30;
+  const radicalBottom = radicalHeight - 10;
+  const radicalHook = radicalTop + 25;
+  const radicalHookEnd = radicalTop + 45;
+  const radicalBarY = radicalTop;
+  const radicalBarXStart = radicalStart - 14;
+  const radicalBarXEnd = radicalEnd + 10;
+  const getSquareRootWidth = () => radicalEnd;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'flex-end' }}>
+      {coefficient > 1 && (
+        <span style={{
+          fontFamily: 'Proxima Nova, Arial, sans-serif',
+          fontWeight: 'bold',
+          fontSize: 38,
+          color: '#000',
+          marginRight: 4,
+          lineHeight: 1,
+          display: 'inline-block',
+          position: 'relative',
+          top: '1px',
+        }}>{coefficient}</span>
+      )}
+      <span style={{ display: 'inline-flex', alignItems: 'flex-end', position: 'relative' }}>
+        <svg
+          width={getSquareRootWidth() + 60}
+          height={radicalHeight}
+          viewBox={`0 0 ${getSquareRootWidth() + 60} ${radicalHeight}`}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <polyline
+            points={`10,${radicalHook} 18,${radicalHookEnd} 32,${radicalTop} ${radicalBarXEnd},${radicalBarY}`}
+            stroke="#000"
+            strokeWidth="4"
+            fill="none"
+            strokeLinejoin="round"
+          />
+          {expression.map((item, index) => {
+            const xPosition = radicalStart + (index * numberWidth);
+            if (item.type === 'number') {
+              // Use visibleIndices to map to the original factor index
+              const factorIdx = visibleIndices[index / 2 | 0];
+              const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
+              return (
+                <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default' }}>
+                  <rect
+                    x={xPosition}
+                    y={radicalTop + radicalYOffset}
+                    width="20"
+                    height="32"
+                    fill={isHighlighted ? '#fef08a' : 'transparent'}
+                    onClick={highlightable && handleNumberClick ? () => handleNumberClick(factorIdx) : undefined}
+                  />
+                  <text
+                    x={xPosition + 10}
+                    y={radicalTop + radicalYOffset + 24}
+                    textAnchor="middle"
+                    fontFamily="Proxima Nova, Arial, sans-serif"
+                    fontWeight="bold"
+                    fontSize="38"
+                    fill="#000"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {item.value}
+                  </text>
+                </g>
+              );
+            } else if (item.type === 'symbol') {
+              return (
+                <text
+                  key={item.id}
+                  x={xPosition + 10}
+                  y={radicalTop + radicalYOffset + 24}
+                  textAnchor="middle"
+                  fontFamily="Proxima Nova, Arial, sans-serif"
+                  fontWeight="bold"
+                  fontSize="38"
+                  fill="#000"
+                >
+                  {item.value}
+                </text>
+              );
+            }
+            return null;
+          })}
+        </svg>
+      </span>
+    </span>
+  );
+}
+
 // Component for individual clickable numbers
 const ClickableNumber = ({ number, index, isHighlighted, onClick, isRemoved, disabled }) => (
 	<span
@@ -69,6 +176,30 @@ const SimplifySqRtPrime = () => {
 		setRemovedIndices([]);
 		setOutsideNumbers([]);
 	}, []);
+
+	let factors = number ? getPrimeFactors(number) : [];
+
+	// --- Reference-style SVG radical logic ---
+	// Build the expression array for SVG rendering
+	const visibleIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
+	const expression = [];
+	visibleIndices.forEach((i, idx) => {
+	  expression.push({ type: 'number', value: factors[i], id: i });
+	  if (idx < visibleIndices.length - 1) {
+	    expression.push({ type: 'symbol', value: '×', id: `x-${i}` });
+	  }
+	});
+	// Highlighted numbers as an object for fast lookup
+	const highlightedNumbers = {};
+	highlightedIndices.forEach(i => { highlightedNumbers[i] = true; });
+	// SVG layout constants
+	const numberWidth = 20;
+	const radicalStart = 28;
+	const radicalEnd = radicalStart + (expression.length * numberWidth);
+	const getSquareRootWidth = () => radicalEnd;
+	// Hover logic (optional, for demo parity)
+	const handleNumberHover = (id, isHover) => {};
+	// --- End reference logic ---
 
 	const handleRandomClick = () => {
 		setNumber((prev) => getRandomNumber(prev));
@@ -117,8 +248,6 @@ const SimplifySqRtPrime = () => {
 		}
 	};
 
-	let factors = number ? getPrimeFactors(number) : [];
-
 	const handleNumberClick = (index) => {
 		if (removedIndices.includes(index)) return;
 		setHighlightedIndices(prev => {
@@ -140,6 +269,7 @@ const SimplifySqRtPrime = () => {
 					}
 					lastMovedPair.current[0] = pairKey;
 					setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
+					// Only add one value to outsideNumbers for the pair
 					setOutsideNumbers(prevNums => [...prevNums, factors[index]]);
 					setHistory(hist => [
 						...hist,
@@ -223,7 +353,7 @@ const SimplifySqRtPrime = () => {
 			<div className="prime-factorization-inner center-content">
 				{number && !showFactors && (
 					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}${fadeOut ? ' sqrt-fade-out' : ''}`}>
-						<BlockMath math={`\\sqrt{${number}}`} />
+						{renderSVGStepRadical({ coefficient: 1, numbers: [number] })}
 					</div>
 				)}
 				{number && !showFactors && (
@@ -242,13 +372,10 @@ const SimplifySqRtPrime = () => {
 									const coefficient = outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1;
 									const remainingIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
 									const radicand = remainingIndices.length > 0 ? remainingIndices.map(i => factors[i]).reduce((a, b) => a * b, 1) : 1;
-									return (
-										<span style={{ fontSize: 45 }}>
-											{coefficient !== 1 ? coefficient : ''}
-											{radicand !== 1 ? <span>√{radicand}</span> : ''}
-											{coefficient === 1 && radicand === 1 ? '1' : ''}
-										</span>
-									);
+									if (radicand === 1) {
+										return <span style={{ fontSize: 45, fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 'bold', color: '#000' }}>{coefficient}</span>;
+									}
+									return renderSVGStepRadical({ coefficient, numbers: [radicand] });
 								})()}
 							</div>
 						</div>
@@ -267,11 +394,14 @@ const SimplifySqRtPrime = () => {
 					<>
 						<div className="prime-factors-fade-in center-content">
 							<div className="factor-string-container custom-sqrt-radical">
-								{renderOutsideNumbers()}
-								<span className="sqrt-visible">√</span>
-								<span className="factor-string">
-									{renderFactorString()}
-								</span>
+								{renderSVGStepRadical({
+									coefficient: outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1,
+									numbers: visibleIndices.map(i => factors[i]),
+									highlightable: true,
+									highlightedIndices,
+									handleNumberClick,
+									visibleIndices
+								})}
 							</div>
 						</div>
 						<div className="flexi-wave-bubble-container">
