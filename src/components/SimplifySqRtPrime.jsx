@@ -37,7 +37,7 @@ function getPrimeFactors(n) {
 }
 
 // Helper for SVG radical rendering (shared by both steps)
-function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [] }) {
+function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [] }) {
   // Build expression array
   const expression = [];
   numbers.forEach((value, idx) => {
@@ -62,37 +62,74 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   const getSquareRootWidth = () => radicalEnd;
   // Render coefficient as array or single value
   let coeffArray = Array.isArray(coefficient) ? coefficient : (coefficient > 1 ? [coefficient] : []);
-  // Remove extraLeftMargin logic
+  // Calculate coefficient width for placement
+  const coeffFontSize = 38;
+  const coeffSpacing = 32;
+  const coeffWidth = coeffArray.length > 0 ? (coeffArray.length * coeffSpacing) : 0;
+  // Helper to measure text width for proper spacing
+  function measureTextWidth(text, fontSize = coeffFontSize, fontFamily = 'Proxima Nova, Arial, sans-serif', fontWeight = 'bold') {
+    if (typeof document === 'undefined') return text.length * fontSize * 0.6; // fallback for SSR
+    const canvas = measureTextWidth._canvas || (measureTextWidth._canvas = document.createElement('canvas'));
+    const context = canvas.getContext('2d');
+    context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    return context.measureText(text).width;
+  }
+
+  // Calculate x positions for each coefficient and symbol
+  let coeffX = 0;
+  const coeffElements = [];
+  coeffArray.forEach((n, i) => {
+    const nStr = String(n);
+    const nWidth = measureTextWidth(nStr, coeffFontSize);
+    coeffElements.push(
+      <text
+        key={`coeff-${i}`}
+        x={coeffX + nWidth / 2}
+        y={radicalTop + radicalYOffset + 24}
+        textAnchor="middle"
+        fontFamily="Proxima Nova, Arial, sans-serif"
+        fontWeight="bold"
+        fontSize={coeffFontSize}
+        fill="#000"
+      >
+        {n}
+      </text>
+    );
+    coeffX += nWidth;
+    if (i < coeffArray.length - 1) {
+      const timesWidth = measureTextWidth('×', coeffFontSize - 6);
+      coeffElements.push(
+        <text
+          key={`coeff-times-${i}`}
+          x={coeffX + timesWidth / 2}
+          y={radicalTop + radicalYOffset + 24}
+          textAnchor="middle"
+          fontFamily="Proxima Nova, Arial, sans-serif"
+          fontWeight="bold"
+          fontSize={coeffFontSize - 6}
+          fill="#000"
+        >
+          ×
+        </text>
+      );
+      coeffX += timesWidth + 4; // add a little extra space after ×
+    }
+  });
+  const radicalOffset = coeffElements.length > 0 ? coeffX + 8 : 0;
+
   return (
     <span style={{ display: 'inline-flex', alignItems: 'flex-end' }}>
-      {coeffArray.length > 0 && (
-        <span style={{
-          fontFamily: 'Proxima Nova, Arial, sans-serif',
-          fontWeight: 'bold',
-          fontSize: 38,
-          color: '#000',
-          marginRight: 4,
-          lineHeight: 1,
-          display: 'inline-block',
-          position: 'relative',
-          top: '1px',
-        }}>
-          {coeffArray.map((n, i) => (
-            <React.Fragment key={i}>
-              {n}
-              {i < coeffArray.length - 1 && <span style={{ margin: '0 4px' }}>×</span>}
-            </React.Fragment>
-          ))}
-        </span>
-      )}
-      <span style={{ display: 'inline-flex', alignItems: 'flex-end', position: 'relative' }}>
-        <svg
-          width={getSquareRootWidth() + 60}
-          height={radicalHeight}
-          viewBox={`0 0 ${getSquareRootWidth() + 60} ${radicalHeight}`}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`-100 -100 ${getSquareRootWidth() + 200 + radicalOffset} ${radicalHeight + 200}`}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Coefficient numbers to the left of the radical, spaced dynamically */}
+        {coeffElements}
+        {/* Radical and numbers, shifted right if coefficient present */}
+        <g transform={`translate(${radicalOffset},0)`}>
           <polyline
             points={`10,${radicalHook} 18,${radicalHookEnd} 32,${radicalTop} ${radicalBarXEnd},${radicalBarY}`}
             stroke="#000"
@@ -102,15 +139,15 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
           />
           {expression.map((item, index) => {
             let xPosition = radicalStart + (index * numberWidth);
-            // No extraLeftMargin logic here
             if (item.type === 'number') {
               const factorIdx = visibleIndices[index / 2 | 0];
               const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
+              const isAnimating = animatingPairIndices.includes(factorIdx);
               // Calculate rect width based on number of digits
               const numStr = String(item.value);
               const rectWidth = Math.max(20, numStr.length * 22); // 22px per digit, min 20px
               return (
-                <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default' }}>
+                <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...(isAnimating ? { zIndex: 100, position: 'relative' } : {}) }} className={isAnimating ? 'number-move-up-left' : ''}>
                   <rect
                     x={xPosition}
                     y={radicalTop + radicalYOffset}
@@ -151,8 +188,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
             }
             return null;
           })}
-        </svg>
-      </span>
+        </g>
+      </svg>
     </span>
   );
 }
@@ -184,6 +221,7 @@ const SimplifySqRtPrime = () => {
 	const [telescopeLoaded, setTelescopeLoaded] = useState(false);
 	const lastMovedPair = useRef([]);
 	const [showSimplified, setShowSimplified] = useState(false);
+	const [animatingPairIndices, setAnimatingPairIndices] = useState([]); // NEW: indices of pair being animated
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
@@ -264,7 +302,7 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const handleNumberClick = (index) => {
-		if (removedIndices.includes(index)) return;
+		if (removedIndices.includes(index) || animatingPairIndices.length > 0) return; // Prevent click during animation
 		setHighlightedIndices(prev => {
 			if (prev.includes(index)) {
 				lastMovedPair.current = [];
@@ -283,16 +321,20 @@ const SimplifySqRtPrime = () => {
 						return [];
 					}
 					lastMovedPair.current[0] = pairKey;
-					setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
-					// Only add one value to outsideNumbers for the pair
-					setOutsideNumbers(prevNums => [...prevNums, factors[index]]);
-					setHistory(hist => [
-						...hist,
-						{
-							outsideNumbers: [...outsideNumbers, factors[index]],
-							removedIndices: [...removedIndices, firstIdx, index]
-						}
-					]);
+					// NEW: Animate the pair before removing
+					setAnimatingPairIndices([firstIdx, index]);
+					setTimeout(() => {
+						setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
+						setOutsideNumbers(prevNums => [...prevNums, factors[index]]);
+						setHistory(hist => [
+							...hist,
+							{
+								outsideNumbers: [...outsideNumbers, factors[index]],
+								removedIndices: [...removedIndices, firstIdx, index]
+							}
+						]);
+						setAnimatingPairIndices([]); // Reset after animation
+					}, 600); // Match animation duration
 					return [];
 				}
 			}
@@ -390,7 +432,7 @@ const SimplifySqRtPrime = () => {
 									if (radicand === 1) {
 										return <span style={{ fontSize: 45, fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 'bold', color: '#000' }}>{coefficient}</span>;
 									}
-									return renderSVGStepRadical({ coefficient, numbers: [radicand] });
+									return renderSVGStepRadical({ coefficient, numbers: [radicand], animatingPairIndices });
 								})()}
 							</div>
 						</div>
@@ -420,7 +462,8 @@ const SimplifySqRtPrime = () => {
 										highlightable: showFactors && countAvailablePairs() > 0,
 										highlightedIndices,
 										handleNumberClick: showFactors && countAvailablePairs() > 0 ? handleNumberClick : null,
-										visibleIndices
+										visibleIndices,
+										animatingPairIndices
 									})
 								)}
 							</div>
