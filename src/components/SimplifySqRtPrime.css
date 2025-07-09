@@ -353,11 +353,15 @@ button.prime-factorization-next-btn.disabled,
 
 /* Animation for number moving up and left */
 @keyframes moveUpLeft {
-  from {
+  0% {
     transform: translate(0, 0);
     opacity: 1;
   }
-  to {
+  50% {
+    transform: translate(0, -50px);
+    opacity: 1;
+  }
+  100% {
     transform: translate(-90px, -50px);
     opacity: 1;
   }
@@ -366,4 +370,70 @@ button.prime-factorization-next-btn.disabled,
 .number-move-up-left {
   animation: moveUpLeft 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   z-index: 10;
+} 
+
+/* Animation for moving up before combining */
+@keyframes moveUpCombine {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, -50px);
+    opacity: 1;
+  }
+}
+
+.number-move-up-combine {
+  animation: moveUpCombine 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 11;
+}
+
+/* Animation for one number sliding over to combine with another (starts from up position) */
+@keyframes slideToCombine {
+  0% {
+    transform: translate(0, -50px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--combine-x, 0px), -50px);
+    opacity: 1;
+  }
+}
+
+.number-slide-to-combine {
+  animation: slideToCombine 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 11;
+}
+
+@keyframes moveLeftAfterCombine {
+  0% {
+    transform: translate(0, -50px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--move-left-x, -90px), -50px);
+    opacity: 1;
+  }
+}
+
+.number-move-left-after-combine {
+  animation: moveLeftAfterCombine 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 12;
+} 
+
+@keyframes moveDownAfterLeft {
+  0% {
+    transform: translate(var(--move-left-x, -90px), -50px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--move-left-x, -90px), 0);
+    opacity: 1;
+  }
+}
+
+.number-move-down-after-left {
+  animation: moveDownAfterLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 13;
 } 

@@ -37,7 +37,7 @@ function getPrimeFactors(n) {
 }
 
 // Helper for SVG radical rendering (shared by both steps)
-function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [] }) {
+function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null }) {
   // Build expression array
   const expression = [];
   numbers.forEach((value, idx) => {
@@ -142,12 +142,66 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
             if (item.type === 'number') {
               const factorIdx = visibleIndices[index / 2 | 0];
               const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
-              const isAnimating = animatingPairIndices.includes(factorIdx);
+              // Combine animation logic
+              let combineClass = '';
+              let combineStyle = {};
+              if (combineAnim && combineAnim.indices.includes(factorIdx)) {
+                const [i1, i2] = combineAnim.indices;
+                const survivor = combineAnim.survivor;
+                if (combineAnim.phase === 'up') {
+                  combineClass = 'number-move-up-combine';
+                } else if (combineAnim.phase === 'combine') {
+                  if (factorIdx !== survivor) {
+                    // Only the rightmost slides left to the leftmost
+                    if (factorIdx === Math.max(i1, i2)) {
+                      const survivorIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
+                      const slideX = (survivorIdx - index) * numberWidth;
+                      combineClass = 'number-slide-to-combine';
+                      combineStyle = { '--combine-x': `${slideX}px` };
+                    } else {
+                      combineClass = 'number-move-up-combine';
+                    }
+                  } else {
+                    combineClass = 'number-move-up-combine';
+                  }
+                } else if (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'moveDown') {
+                  if (factorIdx === survivor) {
+                    // Calculate dynamic X distance to coefficient position
+                    // Find the current xPosition of the survivor
+                    const survivorExprIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
+                    let survivorX = radicalStart + (survivorExprIdx * numberWidth);
+                    // Find the coefficient's target x (left of radical, after all coeffs)
+                    let coeffX = 0;
+                    coeffArray.forEach((n, i) => {
+                      const nStr = String(n);
+                      const nWidth = measureTextWidth(nStr, coeffFontSize);
+                      coeffX += nWidth;
+                      if (i < coeffArray.length - 1) {
+                        const timesWidth = measureTextWidth('×', coeffFontSize - 6);
+                        coeffX += timesWidth + 4;
+                      }
+                    });
+                    // Subtract extra for radical hook (28px)
+                    const targetX = -survivorX + coeffX - 28;
+                    const moveLeftStyle = { '--move-left-x': `${targetX}px` };
+                    if (combineAnim.phase === 'moveLeft') {
+                      combineClass = 'number-move-left-after-combine';
+                      combineStyle = moveLeftStyle;
+                    } else {
+                      combineClass = 'number-move-down-after-left';
+                      combineStyle = moveLeftStyle;
+                    }
+                  } else {
+                    // Hide the non-survivor after combine
+                    combineStyle = { display: 'none' };
+                  }
+                }
+              }
               // Calculate rect width based on number of digits
               const numStr = String(item.value);
               const rectWidth = Math.max(20, numStr.length * 22); // 22px per digit, min 20px
               return (
-                <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...(isAnimating ? { zIndex: 100, position: 'relative' } : {}) }} className={isAnimating ? 'number-move-up-left' : ''}>
+                <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...combineStyle }} className={combineClass}>
                   <rect
                     x={xPosition}
                     y={radicalTop + radicalYOffset}
@@ -222,6 +276,8 @@ const SimplifySqRtPrime = () => {
 	const lastMovedPair = useRef([]);
 	const [showSimplified, setShowSimplified] = useState(false);
 	const [animatingPairIndices, setAnimatingPairIndices] = useState([]); // NEW: indices of pair being animated
+	// --- Combine Animation State ---
+	const [combineAnim, setCombineAnim] = useState(null); // { indices: [i1, i2], survivor, phase: 'up'|'combine'|'moveLeft'|null }
 
 	useEffect(() => {
 		setNumber(getRandomNumber());
@@ -321,20 +377,34 @@ const SimplifySqRtPrime = () => {
 						return [];
 					}
 					lastMovedPair.current[0] = pairKey;
-					// NEW: Animate the pair before removing
-					setAnimatingPairIndices([firstIdx, index]);
+					// --- Combine Animation Sequence ---
+					// Pick survivor (leftmost by default)
+					const survivor = Math.min(firstIdx, index);
+					setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'up' });
 					setTimeout(() => {
-						setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
-						setOutsideNumbers(prevNums => [...prevNums, factors[index]]);
-						setHistory(hist => [
-							...hist,
-							{
-								outsideNumbers: [...outsideNumbers, factors[index]],
-								removedIndices: [...removedIndices, firstIdx, index]
-							}
-						]);
-						setAnimatingPairIndices([]); // Reset after animation
-					}, 600); // Match animation duration
+						setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'combine' });
+						setTimeout(() => {
+							// Add a 0.2s delay before moveLeft
+							setTimeout(() => {
+								setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveLeft' });
+								setTimeout(() => {
+									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveDown' });
+									setTimeout(() => {
+										setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
+										setOutsideNumbers(prevNums => [...prevNums, factors[survivor]]);
+										setHistory(hist => [
+											...hist,
+											{
+												outsideNumbers: [...outsideNumbers, factors[survivor]],
+												removedIndices: [...removedIndices, firstIdx, index]
+											}
+										]);
+										setCombineAnim(null);
+									}, 400);
+								}, 600);
+							}, 200);
+						}, 500);
+					}, 400);
 					return [];
 				}
 			}
@@ -432,7 +502,7 @@ const SimplifySqRtPrime = () => {
 									if (radicand === 1) {
 										return <span style={{ fontSize: 45, fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 'bold', color: '#000' }}>{coefficient}</span>;
 									}
-									return renderSVGStepRadical({ coefficient, numbers: [radicand], animatingPairIndices });
+									return renderSVGStepRadical({ coefficient, numbers: [radicand], animatingPairIndices, combineAnim });
 								})()}
 							</div>
 						</div>
@@ -463,7 +533,8 @@ const SimplifySqRtPrime = () => {
 										highlightedIndices,
 										handleNumberClick: showFactors && countAvailablePairs() > 0 ? handleNumberClick : null,
 										visibleIndices,
-										animatingPairIndices
+										animatingPairIndices,
+										combineAnim
 									})
 								)}
 							</div>
