@@ -438,6 +438,12 @@ button.prime-factorization-next-btn.disabled,
   z-index: 13;
 } 
 
+.number-stay-in-position {
+  /* Keep the number in its coefficient position during radicalShift phase */
+  transform: translate(var(--move-left-x, 0px), -50px);
+  z-index: 12;
+}
+
 .radical-shift-right {
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform: translateX(var(--radical-shift-x, 0px));

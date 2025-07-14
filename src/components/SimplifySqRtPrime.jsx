@@ -46,7 +46,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
       expression.push({ type: 'symbol', value: '×', id: `x-${idx}` });
     }
   });
-  const numberWidth = 28; // increase width for larger numbers
+  const numberWidth = 38; // increase width for larger numbers to match font size
   const radicalBuffer = 0; // no extra left buffer
   const radicalStart = 38 + radicalBuffer;
   const radicalEnd = radicalStart + (expression.length * numberWidth);
@@ -61,13 +61,18 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   const radicalBarXEnd = radicalEnd + 10;
   const getSquareRootWidth = () => radicalEnd;
   // Render coefficient as array or single value
-  let coeffArray = Array.isArray(coefficient) ? coefficient : (coefficient > 1 ? [coefficient] : []);
+  let coeffArray = [];
+  if (Array.isArray(coefficient)) {
+    coeffArray = coefficient;
+  } else if (typeof coefficient === 'number' && coefficient > 1) {
+    coeffArray = [coefficient];
+  }
   // Calculate coefficient width for placement
   const coeffFontSize = 38;
   const coeffSpacing = 32;
   const coeffWidth = coeffArray.length > 0 ? (coeffArray.length * coeffSpacing) : 0;
   // Helper to measure text width for proper spacing
-  function measureTextWidth(text, fontSize = coeffFontSize, fontFamily = 'Proxima Nova, Arial, sans-serif', fontWeight = 'bold') {
+  function measureTextWidth(text, fontSize = coeffFontSize, fontFamily = 'Proxima Nova, Arial, sans-serif', fontWeight = '400') {
     if (typeof document === 'undefined') return text.length * fontSize * 0.6; // fallback for SSR
     const canvas = measureTextWidth._canvas || (measureTextWidth._canvas = document.createElement('canvas'));
     const context = canvas.getContext('2d');
@@ -87,9 +92,9 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
         x={coeffX + nWidth / 2}
         y={radicalTop + radicalYOffset + 24}
         textAnchor="middle"
-        fontFamily="Proxima Nova, Arial, sans-serif"
-        fontWeight="bold"
+        fontFamily="Proxima Nova"
         fontSize={coeffFontSize}
+        fontWeight="400"
         fill="#000"
       >
         {n}
@@ -104,9 +109,9 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
           x={coeffX + timesWidth / 2}
           y={radicalTop + radicalYOffset + 24}
           textAnchor="middle"
-          fontFamily="Proxima Nova, Arial, sans-serif"
-          fontWeight="bold"
+          fontFamily="Proxima Nova"
           fontSize={coeffFontSize - 6}
+          fontWeight="400"
           fill="#000"
         >
           ×
@@ -133,19 +138,19 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
         {(() => {
           // Calculate the total width of all coefficients (coefficient)
           let totalCoeffWidth = 0;
-          (Array.isArray(coefficient) ? coefficient : (coefficient > 1 ? [coefficient] : [])).forEach((n, i) => {
+          coeffArray.forEach((n, i) => {
             const nStr = String(n);
             const nWidth = measureTextWidth(nStr, coeffFontSize);
             totalCoeffWidth += nWidth;
-            if (i < (Array.isArray(coefficient) ? coefficient.length : (coefficient > 1 ? 1 : 0)) - 1) {
+            if (i < coeffArray.length - 1) {
               const timesWidth = measureTextWidth('×', coeffFontSize - 6);
               totalCoeffWidth += timesWidth + 4;
             }
           });
-          // During moveLeft phase, add the width of the new coefficient for the animation
+          // During moveLeft and radicalShift phases, add the width of the new coefficient for the animation
           let radicalShiftX = totalCoeffWidth;
           let radicalShiftClass = '';
-          if (combineAnim && combineAnim.phase === 'moveLeft') {
+          if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown')) {
             let radicalShiftValid = false;
             let newCoeffWidth = 0;
             if (
@@ -157,128 +162,204 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
               newCoeffWidth = measureTextWidth(String(newCoeff), coeffFontSize);
               radicalShiftValid = true;
             }
-            radicalShiftX += radicalShiftValid ? newCoeffWidth + 12 : 0; // 12px buffer
+            // Only apply radical shift during radicalShift and dropDown phases
+            if (combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') {
+              radicalShiftX += radicalShiftValid ? newCoeffWidth + 12 : 0; // 12px buffer
+            }
           }
           if (radicalShiftX > 0) radicalShiftClass = 'radical-shift-right';
           return (
-            <g
-              transform={`translate(${radicalOffset},0)`}
-              className={radicalShiftClass}
-              style={{ '--radical-shift-x': `${radicalShiftX}px` }}
-            >
-              <polyline
-                points={`10,${radicalHook} 18,${radicalHookEnd} 32,${radicalTop} ${radicalBarXEnd},${radicalBarY}`}
-                stroke="#000"
-                strokeWidth="4"
-                fill="none"
-                strokeLinejoin="round"
-              />
-              {expression.map((item, index) => {
-                let xPosition = radicalStart + (index * numberWidth);
-                if (item.type === 'number') {
-                  const factorIdx = visibleIndices[index / 2 | 0];
-                  const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
-                  // Combine animation logic
-                  let combineClass = '';
-                  let combineStyle = {};
-                  if (combineAnim && combineAnim.indices.includes(factorIdx)) {
-                    const [i1, i2] = combineAnim.indices;
-                    const survivor = combineAnim.survivor;
-                    if (combineAnim.phase === 'up') {
-                      combineClass = 'number-move-up-combine';
-                    } else if (combineAnim.phase === 'combine') {
-                      if (factorIdx !== survivor) {
-                        // Only the rightmost slides left to the leftmost
-                        if (factorIdx === Math.max(i1, i2)) {
-                          const survivorIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
-                          const slideX = (survivorIdx - index) * numberWidth;
-                          combineClass = 'number-slide-to-combine';
-                          combineStyle = { '--combine-x': `${slideX}px` };
-                        } else {
-                          combineClass = 'number-move-up-combine';
-                        }
-                      } else {
-                        combineClass = 'number-move-up-combine';
-                      }
-                    } else if (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'moveDown') {
-                      if (factorIdx === survivor) {
-                        // Calculate dynamic X distance to coefficient position
-                        // Find the current xPosition of the survivor
-                        const survivorExprIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
-                        let survivorX = radicalStart + (survivorExprIdx * numberWidth);
-                        // Find the coefficient's target x (left of radical, after all coeffs)
-                        let coeffX = 0;
-                        coeffArray.forEach((n, i) => {
-                          const nStr = String(n);
-                          const nWidth = measureTextWidth(nStr, coeffFontSize);
-                          coeffX += nWidth;
-                          if (i < coeffArray.length - 1) {
-                            const timesWidth = measureTextWidth('×', coeffFontSize - 6);
-                            coeffX += timesWidth + 4;
-                          }
-                        });
-                        // Subtract extra for radical hook (28px)
-                        const targetX = -survivorX + coeffX - 28;
-                        const moveLeftStyle = { '--move-left-x': `${targetX}px` };
-                        if (combineAnim.phase === 'moveLeft') {
-                          combineClass = 'number-move-left-after-combine';
-                          combineStyle = moveLeftStyle;
-                        } else {
-                          combineClass = 'number-move-down-after-left';
-                          combineStyle = moveLeftStyle;
-                        }
-                      } else {
-                        // Hide the non-survivor after combine
-                        combineStyle = { display: 'none' };
-                      }
-                    }
+            <>
+              {/* Render survivor outside the radical group during moveLeft, radicalShift and dropDown phases */}
+              {combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') && (() => {
+                const survivorItem = expression.find(item => item.type === 'number' && visibleIndices[item.id] === combineAnim.survivor);
+                if (survivorItem) {
+                  // For moveLeft phase, calculate from current position
+                  // For radicalShift and dropDown phases, use the final coefficient position
+                  let survivorX, targetX;
+                  
+                  if (combineAnim.phase === 'moveLeft') {
+                    // Calculate the survivor's position based on its current position in the expression
+                    const survivorExprIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === combineAnim.survivor);
+                    survivorX = radicalStart + (survivorExprIdx * numberWidth);
+                  } else {
+                    // For radicalShift and dropDown, use the final coefficient position
+                    survivorX = 0; // Will be overridden by targetX
                   }
-                  // Calculate rect width based on number of digits
-                  const numStr = String(item.value);
-                  const rectWidth = Math.max(20, numStr.length * 22); // 22px per digit, min 20px
+                  
+                  let coeffX = 0;
+                  coeffArray.forEach((n, i) => {
+                    const nStr = String(n);
+                    const nWidth = measureTextWidth(nStr, coeffFontSize);
+                    coeffX += nWidth;
+                    if (i < coeffArray.length - 1) {
+                      const timesWidth = measureTextWidth('×', coeffFontSize - 6);
+                      coeffX += timesWidth + 4;
+                    }
+                  });
+                  // Add the width of the new coefficient being added
+                  const newCoeff = factors[combineAnim.survivor];
+                  const newCoeffWidth = measureTextWidth(String(newCoeff), coeffFontSize);
+                  coeffX += newCoeffWidth;
+                  
+                  if (combineAnim.phase === 'moveLeft') {
+                    // Calculate target position: move left from current position to coefficient position
+                    targetX = -(survivorX - coeffX + 28);
+                  } else {
+                    // For radicalShift and dropDown, use the final coefficient position
+                    targetX = -(0 - coeffX + 28);
+                  }
+                  const numStr = String(survivorItem.value);
+                  const rectWidth = Math.max(20, numStr.length * 22);
+                  let combineClass = '';
+                  let combineStyle = { '--move-left-x': `${targetX}px` };
+                  if (combineAnim.phase === 'moveLeft') {
+                    combineClass = 'number-move-left-after-combine';
+                  } else if (combineAnim.phase === 'radicalShift') {
+                    // During radicalShift, the survivor should stay at the coefficient position
+                    combineClass = 'number-stay-in-position';
+                    // Use the final target position for radicalShift and dropDown phases
+                    combineStyle = { '--move-left-x': `${targetX}px` };
+                  } else if (combineAnim.phase === 'dropDown') {
+                    combineClass = 'number-move-down-after-left';
+                    // Use the final target position for dropDown phase
+                    combineStyle = { '--move-left-x': `${targetX}px` };
+                  }
+                  
                   return (
-                    <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...combineStyle }} className={combineClass}>
+                    <g 
+                      key={`survivor-${combineAnim.survivor}`} 
+                      style={{ ...combineStyle }} 
+                      className={combineClass}
+                      transform={`translate(${radicalOffset},0)`}
+                    >
                       <rect
-                        x={xPosition}
+                        x={survivorX}
                         y={radicalTop + radicalYOffset}
                         width={rectWidth}
                         height="32"
-                        fill={isHighlighted ? '#fef08a' : 'transparent'}
-                        onClick={highlightable && handleNumberClick ? () => handleNumberClick(factorIdx) : undefined}
+                        fill="transparent"
                       />
                       <text
-                        x={xPosition + rectWidth / 2}
+                        x={survivorX + rectWidth / 2}
                         y={radicalTop + radicalYOffset + 24}
                         textAnchor="middle"
-                        fontFamily="Proxima Nova, Arial, sans-serif"
-                        fontWeight="bold"
+                        fontFamily="Proxima Nova"
                         fontSize="38"
+                        fontWeight="400"
                         fill="#000"
                         style={{ pointerEvents: 'none' }}
                       >
-                        {item.value}
+                        {survivorItem.value}
                       </text>
                     </g>
                   );
-                } else if (item.type === 'symbol') {
-                  return (
-                    <text
-                      key={item.id}
-                      x={xPosition + 10}
-                      y={radicalTop + radicalYOffset + 24}
-                      textAnchor="middle"
-                      fontFamily="Proxima Nova, Arial, sans-serif"
-                      fontWeight="bold"
-                      fontSize="38"
-                      fill="#000"
-                    >
-                      {item.value}
-                    </text>
-                  );
                 }
                 return null;
-              })}
-            </g>
+              })()}
+              
+              {/* Radical group - excludes survivor during radicalShift and dropDown phases */}
+              <g
+                transform={`translate(${radicalOffset},0)`}
+                className={radicalShiftClass}
+                style={{ '--radical-shift-x': `${radicalShiftX}px` }}
+              >
+                <polyline
+                  points={`10,${radicalHook} 18,${radicalHookEnd} 32,${radicalTop} ${radicalBarXEnd},${radicalBarY}`}
+                  stroke="#000"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinejoin="round"
+                />
+                {expression.map((item, index) => {
+                  let xPosition = radicalStart + (index * numberWidth);
+                  if (item.type === 'number') {
+                    const factorIdx = visibleIndices[index / 2 | 0];
+                    const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
+                    
+                    // Skip rendering survivor during moveLeft, radicalShift and dropDown phases (it's rendered separately)
+                    if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') && factorIdx === combineAnim.survivor) {
+                      return null;
+                    }
+                    
+                    // Combine animation logic
+                    let combineClass = '';
+                    let combineStyle = {};
+                    if (combineAnim && combineAnim.indices.includes(factorIdx)) {
+                      const [i1, i2] = combineAnim.indices;
+                      const survivor = combineAnim.survivor;
+                      if (combineAnim.phase === 'up') {
+                        combineClass = 'number-move-up-combine';
+                      } else if (combineAnim.phase === 'combine') {
+                        if (factorIdx !== survivor) {
+                          // Only the rightmost slides left to the leftmost
+                          if (factorIdx === Math.max(i1, i2)) {
+                            const survivorIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
+                            const slideX = (survivorIdx - index) * numberWidth;
+                            combineClass = 'number-slide-to-combine';
+                            combineStyle = { '--combine-x': `${slideX}px` };
+                          } else {
+                            combineClass = 'number-move-up-combine';
+                          }
+                        } else {
+                          combineClass = 'number-move-up-combine';
+                        }
+                      } else if (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') {
+                        // Hide non-survivor and handle survivor separately
+                        if (factorIdx !== survivor) {
+                          combineStyle = { display: 'none' };
+                        } else {
+                          combineStyle = { display: 'none' }; // Survivor is handled separately
+                        }
+                      }
+                    }
+                    // Calculate rect width based on number of digits
+                    const numStr = String(item.value);
+                    const rectWidth = Math.max(20, numStr.length * 22); // 22px per digit, min 20px
+                    return (
+                      <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...combineStyle }} className={combineClass}>
+                        <rect
+                          x={xPosition}
+                          y={radicalTop + radicalYOffset}
+                          width={rectWidth}
+                          height="32"
+                          fill={isHighlighted ? '#fef08a' : 'transparent'}
+                          onClick={highlightable && handleNumberClick ? () => handleNumberClick(factorIdx) : undefined}
+                        />
+                        <text
+                          x={xPosition + rectWidth / 2}
+                          y={radicalTop + radicalYOffset + 24}
+                          textAnchor="middle"
+                          fontFamily="Proxima Nova"
+                          fontSize="38"
+                          fontWeight="400"
+                          fill="#000"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {item.value}
+                        </text>
+                      </g>
+                    );
+                  } else if (item.type === 'symbol') {
+                    return (
+                      <text
+                        key={item.id}
+                        x={xPosition + 10}
+                        y={radicalTop + radicalYOffset + 24}
+                        textAnchor="middle"
+                        fontFamily="Proxima Nova"
+                        fontSize="38"
+                        fontWeight="400"
+                        fill="#000"
+                      >
+                        {item.value}
+                      </text>
+                    );
+                  }
+                  return null;
+                })}
+              </g>
+            </>
           );
         })()}
       </svg>
@@ -293,7 +374,16 @@ const ClickableNumber = ({ number, index, isHighlighted, onClick, isRemoved, dis
 		onClick={disabled || isRemoved ? undefined : () => onClick(index)}
 		style={{
 			pointerEvents: disabled || isRemoved ? 'none' : 'auto',
-			opacity: isRemoved ? 0.3 : 1
+			opacity: isRemoved ? 0.3 : 1,
+			fontFamily: 'Proxima Nova, Arial, sans-serif',
+			fontWeight: 400,
+			fontSize: 38,
+			color: '#000',
+			lineHeight: '1.1',
+			verticalAlign: 'middle',
+			display: 'inline-block',
+			minWidth: '32px',
+			textAlign: 'center',
 		}}
 	>
 		{number}
@@ -422,25 +512,29 @@ const SimplifySqRtPrime = () => {
 					setTimeout(() => {
 						setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'combine' });
 						setTimeout(() => {
-							// Add a 0.2s delay before moveLeft
+							// Add a pause before moveLeft
 							setTimeout(() => {
 								setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveLeft' });
 								setTimeout(() => {
-									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveDown' });
+									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'radicalShift' });
 									setTimeout(() => {
-										setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
-										setOutsideNumbers(prevNums => [...prevNums, factors[survivor]]);
-										setHistory(hist => [
-											...hist,
-											{
-												outsideNumbers: [...outsideNumbers, factors[survivor]],
-												removedIndices: [...removedIndices, firstIdx, index]
-											}
-										]);
-										setCombineAnim(null);
+										setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'dropDown' });
+										setTimeout(() => {
+											// Update state only after all animations complete
+											setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
+											setOutsideNumbers(prevNums => [...prevNums, factors[survivor]]);
+											setHistory(hist => [
+												...hist,
+												{
+													outsideNumbers: [...outsideNumbers, factors[survivor]],
+													removedIndices: [...removedIndices, firstIdx, index]
+												}
+											]);
+											setCombineAnim(null);
+										}, 400);
 									}, 400);
-								}, 600);
-							}, 400); // Pause is now 0.4s
+								}, 400);
+							}, 400); // Pause after combine
 						}, 500);
 					}, 400);
 					return [];
@@ -477,11 +571,11 @@ const SimplifySqRtPrime = () => {
 	const renderOutsideNumbers = () => {
 		if (outsideNumbers.length === 0) return null;
 		return (
-			<span className="outside-radical">
+			<span className="outside-radical" style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: '#000', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
 				{outsideNumbers.map((value, idx) => (
 					<React.Fragment key={idx}>
 						{value}
-						{idx < outsideNumbers.length - 1 && <span className="times-symbol"> × </span>}
+						{idx < outsideNumbers.length - 1 && <span className="times-symbol" style={{ fontWeight: 400, fontSize: 32, color: '#666', margin: '0 4px' }}> × </span>}
 					</React.Fragment>
 				))}
 			</span>
@@ -538,7 +632,7 @@ const SimplifySqRtPrime = () => {
 									const remainingIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
 									const radicand = remainingIndices.length > 0 ? remainingIndices.map(i => factors[i]).reduce((a, b) => a * b, 1) : 1;
 									if (radicand === 1) {
-										return <span style={{ fontSize: 45, fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 'bold', color: '#000' }}>{coefficient}</span>;
+										return <span style={{ fontSize: 38, fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, color: '#000', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>{coefficient}</span>;
 									}
 									return renderSVGStepRadical({ coefficient, numbers: [radicand], animatingPairIndices, combineAnim, factors });
 								})()}
@@ -560,12 +654,12 @@ const SimplifySqRtPrime = () => {
 						<div className="prime-factors-fade-in center-content">
 							<div className="factor-string-container custom-sqrt-radical">
 								{visibleIndices.length === 0 ? (
-									<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 'bold', fontSize: 38, color: '#000' }}>
+									<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: '#000', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
 										{outsideNumbers.length > 0 ? outsideNumbers.join(' × ') : ''}
 									</span>
 								) : (
 									renderSVGStepRadical({
-										coefficient: outsideNumbers,
+										coefficient: outsideNumbers.length > 0 ? outsideNumbers : [],
 										numbers: visibleIndices.map(i => factors[i]),
 										highlightable: showFactors && countAvailablePairs() > 0,
 										highlightedIndices,
