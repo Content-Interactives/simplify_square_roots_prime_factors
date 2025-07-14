@@ -210,8 +210,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
           // --- Animate coefficient shift during radicalShift phase ---
           let coeffShiftX = 0;
           let coeffShiftClass = '';
-          if (combineAnim && (combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown')) {
-            // Only apply the leftward shift to the coefficients during radicalShift and dropDown
+          if (combineAnim && (combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown' || combineAnim.phase === 'settle')) {
+            // Keep the coefficients shifted left during radicalShift, dropDown, and settle
             let coeffsSoFar = Array.isArray(coeffArray) ? [...coeffArray] : [];
             if (
               typeof combineAnim.survivor === 'number' &&
@@ -225,12 +225,13 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
             coeffsSoFar.forEach(n => {
               totalNewCoeffWidth += measureTextWidth(String(n), coeffFontSize) + 12;
             });
-            coeffShiftX = totalNewCoeffWidth;
             coeffShiftClass = 'coeff-shift-left';
-          } else if (combineAnim && combineAnim.phase === 'settle') {
-            // During settle, animate all numbers and coefficients into their new positions
-            coeffShiftX = 0;
-            coeffShiftClass = 'number-settle-into-place';
+            if (combineAnim.phase === 'settle') {
+              // During settle, animate to the final position (0)
+              coeffShiftX = 0;
+            } else {
+              coeffShiftX = totalNewCoeffWidth;
+            }
           }
           return (
             <g transform={`translate(${centerOffset},0)`}>
@@ -657,7 +658,7 @@ const SimplifySqRtPrime = () => {
 			}
 			if (prev.length >= 2) {
 				lastMovedPair.current = [];
-				return [prev[1], index];
+				return [index];
 			}
 			lastMovedPair.current = [];
 			return [...prev, index];
