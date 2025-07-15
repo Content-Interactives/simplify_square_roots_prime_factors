@@ -47,6 +47,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   } else if (coefficient == null) {
     coeffArray = [];
   }
+  
   // Build expression array
   const expression = [];
   numbers.forEach((value, idx) => {
@@ -210,8 +211,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
           // --- Animate coefficient shift during radicalShift phase ---
           let coeffShiftX = 0;
           let coeffShiftClass = '';
-          if (combineAnim && (combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown' || combineAnim.phase === 'settle')) {
-            // Keep the coefficients shifted left during radicalShift, dropDown, and settle
+          if (combineAnim && combineAnim.phase === 'dropDown') {
+            // Keep the coefficients shifted left during dropDown (combines radical shift and drop down)
             let coeffsSoFar = Array.isArray(coeffArray) ? [...coeffArray] : [];
             if (
               typeof combineAnim.survivor === 'number' &&
@@ -226,13 +227,9 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
               totalNewCoeffWidth += measureTextWidth(String(n), coeffFontSize) + 12;
             });
             coeffShiftClass = 'coeff-shift-left';
-            if (combineAnim.phase === 'settle') {
-              // During settle, animate to the final position (0)
-              coeffShiftX = 0;
-            } else {
-              coeffShiftX = totalNewCoeffWidth;
-            }
+            coeffShiftX = totalNewCoeffWidth;
           }
+          
           return (
             <g transform={`translate(${centerOffset},0)`}>
               {/* Move coefficients left so they don't overlap the radical, with extra space for multiple coefficients */}
@@ -260,7 +257,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                 // });
                 // let radicalShiftX = totalCoeffWidth;
                 // let radicalShiftClass = '';
-                if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown')) {
+                if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown')) {
             let radicalShiftValid = false;
             let newCoeffWidth = 0;
             if (
@@ -272,31 +269,21 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
               newCoeffWidth = measureTextWidth(String(newCoeff), coeffFontSize);
               radicalShiftValid = true;
             }
-                  // Only apply radical shift during radicalShift and dropDown phases
-                  if (combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') {
+                  // Apply radical shift during dropDown phase (combines radical shift and drop down)
+                  if (combineAnim.phase === 'dropDown') {
             radicalShiftX += radicalShiftValid ? newCoeffWidth + 12 : 0; // 12px buffer
                   }
           }
           if (radicalShiftX > 0) radicalShiftClass = 'radical-shift-right';
+          
           return (
                   <>
-                    {/* Render survivor outside the radical group during moveLeft, radicalShift and dropDown phases */}
-                    {combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') && (() => {
+                    {/* Render survivor outside the radical group during moveLeft and dropDown phases */}
+                    {combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown') && (() => {
                       const survivorItem = expression.find(item => item.type === 'number' && visibleIndices[item.id] === combineAnim.survivor);
                       if (!survivorItem) return null; // GUARD: Prevent crash if survivorItem is not found
-                      // For moveLeft phase, calculate from current position
-                      // For radicalShift and dropDown phases, use the final coefficient position
-                      let survivorX, targetX;
                       
-                      if (combineAnim.phase === 'moveLeft') {
-                        // Calculate the survivor's position based on its current position in the expression
-                        const survivorExprIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === combineAnim.survivor);
-                        survivorX = radicalStart + (survivorExprIdx * numberWidth);
-                      } else {
-                        // For radicalShift and dropDown, use the final coefficient position
-                        survivorX = 0; // Will be overridden by targetX
-                      }
-                      
+                      // Calculate the final coefficient position for all phases
                       let coeffX = 0;
                       coeffArray.forEach((n, i) => {
                         const nStr = String(n);
@@ -312,28 +299,41 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                       const newCoeffWidth = measureTextWidth(String(newCoeff), coeffFontSize);
                       coeffX += newCoeffWidth;
                       
-                      if (combineAnim.phase === 'moveLeft') {
-                        // Calculate target position: move left from current position to coefficient position
-                        targetX = -(survivorX - coeffX + 28);
-                      } else {
-                        // For radicalShift and dropDown, use the final coefficient position
-                        targetX = -(0 - coeffX + 28);
+                      // Calculate the final target position (coefficient position)
+                      const finalTargetX = -(0 - coeffX + 28);
+                      
+                      // For moveLeft phase, start from current position and animate to final position
+                      // For dropDown phase, stay at the final position
+                      let survivorX, targetX;
+                      // Calculate survivor's position based on its original index in factors array
+                      // This ensures consistent positioning regardless of visibleIndices changes
+                      survivorX = radicalStart + (combineAnim.survivor * numberWidth);
+                      // Calculate the width of all current coefficients (coefficient)
+                      let coeffs = Array.isArray(coeffArray) ? coeffArray : [];
+                      let finalCoeffX = 0;
+                      coeffs.forEach((n, i) => {
+                        const nStr = String(n);
+                        finalCoeffX += measureTextWidth(nStr, coeffFontSize);
+                        if (i < coeffs.length - 1) {
+                          finalCoeffX += measureTextWidth('×', coeffFontSize - 6) + 4;
+                        }
+                      });
+                      if (coeffs.length > 0) {
+                        finalCoeffX += measureTextWidth('×', coeffFontSize - 6) + 4;
                       }
+                      // Calculate the target position
+                      // (move from current radical position to end of coefficient list)
+                      targetX = -(survivorX - finalCoeffX);
+                      
                       const numStr = String(survivorItem.value);
                       const rectWidth = Math.max(20, numStr.length * 22);
                       let combineClass = '';
                       let combineStyle = { '--move-left-x': `${targetX}px` };
+                      
                       if (combineAnim.phase === 'moveLeft') {
                         combineClass = 'number-move-left-after-combine';
-                      } else if (combineAnim.phase === 'radicalShift') {
-                        // During radicalShift, the survivor should stay at the coefficient position
-                        combineClass = 'number-stay-in-position';
-                        // Use the final target position for radicalShift and dropDown phases
-                        combineStyle = { '--move-left-x': `${targetX}px` };
                       } else if (combineAnim.phase === 'dropDown') {
                         combineClass = 'number-move-down-after-left';
-                        // Use the final target position for dropDown phase
-                        combineStyle = { '--move-left-x': `${targetX}px` };
                       }
                       
                       return (
@@ -341,7 +341,6 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                           key={`survivor-${combineAnim.survivor}`} 
                           style={{ ...combineStyle }} 
                           className={combineClass}
-                          // REVERT: Remove radicalOffset from the translate below
                           transform={`translate(0,0)`}
                         >
                           <rect
@@ -387,8 +386,12 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                   const factorIdx = visibleIndices[index / 2 | 0];
                   const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
                           
-                          // Skip rendering survivor during moveLeft, radicalShift and dropDown phases (it's rendered separately)
-                          if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') && factorIdx === combineAnim.survivor) {
+                          // Skip rendering survivor during moveLeft and dropDown phases (it's rendered separately)
+                          // Also skip rendering the non-survivor number during moveLeft and dropDown phases (after combine animation ends)
+                          if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown') && factorIdx === combineAnim.survivor) {
+                            return null;
+                          }
+                          if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown') && combineAnim.indices.includes(factorIdx) && factorIdx !== combineAnim.survivor) {
                             return null;
                           }
                           
@@ -414,18 +417,17 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                       } else {
                         combineClass = 'number-move-up-combine';
                       }
-                            } else if (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown') {
-                              // Hide non-survivor and handle survivor separately
-                              if (factorIdx !== survivor) {
-                                combineStyle = { display: 'none' };
-                        } else {
-                                combineStyle = { display: 'none' }; // Survivor is handled separately
+                    } else if (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown' || combineAnim.phase === 'settle') {
+                      // Hide survivor during all phases after combine - it's handled separately
+                      if (factorIdx === survivor) {
+                        combineStyle = { display: 'none' };
                       }
                     }
                   }
                   // Calculate rect width based on number of digits
                   const numStr = String(item.value);
                   const rectWidth = Math.max(20, numStr.length * 22); // 22px per digit, min 20px
+                  
                   return (
                             <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...combineStyle }} className={`${combineClass} ${settleClass}`}>
                       <rect
@@ -619,35 +621,61 @@ const SimplifySqRtPrime = () => {
 					// --- Combine Animation Sequence ---
 					// Pick survivor (leftmost by default)
 					const survivor = Math.min(firstIdx, index);
+					
+					// Calculate base positions
+					const radicalStart = 38;
+					const radicalTop = 80;
+					const numberWidth = 30;
+					
+					// Log MOVE UP animation start
+					console.log(`MOVE UP ANIMATION START [Number ${factors[firstIdx]}]: (${radicalStart + (firstIdx * numberWidth)}, ${radicalTop + 20})`);
+					console.log(`MOVE UP ANIMATION START [Number ${factors[index]}]: (${radicalStart + (index * numberWidth)}, ${radicalTop + 20})`);
+					
 					setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'up' });
+					
 					setTimeout(() => {
+						// Log MOVE UP animation end
+						console.log(`MOVE UP ANIMATION END [Number ${factors[firstIdx]}]: (${radicalStart + (firstIdx * numberWidth)}, ${radicalTop - 30}), (0, -50px moved)`);
+						console.log(`MOVE UP ANIMATION END [Number ${factors[index]}]: (${radicalStart + (index * numberWidth)}, ${radicalTop - 30}), (0, -50px moved)`);
+						
+						// Log COMBINE animation start
+						console.log(`COMBINE ANIMATION START [Number ${factors[firstIdx]}]: (${radicalStart + (firstIdx * numberWidth)}, ${radicalTop - 30})`);
+						console.log(`COMBINE ANIMATION START [Number ${factors[index]}]: (${radicalStart + (index * numberWidth)}, ${radicalTop - 30})`);
+						
 						setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'combine' });
+						
 						setTimeout(() => {
+							// Log COMBINE animation end
+							const slideX = (Math.max(firstIdx, index) - Math.min(firstIdx, index)) * numberWidth;
+							console.log(`COMBINE ANIMATION END [Number ${factors[Math.max(firstIdx, index)]} slides to Number ${factors[Math.min(firstIdx, index)]}]: (${radicalStart + (Math.min(firstIdx, index) * numberWidth)}, ${radicalTop - 30}), (${slideX}, 0px moved)`);
+							console.log(`COMBINE ANIMATION END [Number ${factors[Math.min(firstIdx, index)]} stays]: (${radicalStart + (Math.min(firstIdx, index) * numberWidth)}, ${radicalTop - 30}), (0, 0px moved)`);
+							
 							// Add a pause before moveLeft
 							setTimeout(() => {
+								// Log MOVE LEFT animation start
+								console.log(`MOVE LEFT ANIMATION START [Survivor Number ${factors[survivor]}]: (${radicalStart + (survivor * numberWidth)}, ${radicalTop - 30})`);
+								
 								setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveLeft' });
+								
 								setTimeout(() => {
-									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'radicalShift' });
+									// Calculate target position for survivor
+									const targetX = -(radicalStart + (survivor * numberWidth) - 28);
+									console.log(`MOVE LEFT ANIMATION END [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop - 30}), (${targetX - (radicalStart + (survivor * numberWidth))}, 0px moved)`);
+									
+									// Log DROP DOWN animation start (combines radical shift and drop down)
+									console.log(`DROP DOWN ANIMATION START [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop - 30})`);
+									
+									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'dropDown' });
+									
 									setTimeout(() => {
-										setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'dropDown' });
-										setTimeout(() => {
-											// Update state only after all animations complete
-										setRemovedIndices(prevInds => [...prevInds, firstIdx, index]);
-										setOutsideNumbers(prevNums => [...prevNums, factors[survivor]]);
-										setHistory(prevHist => {
-											// Get the latest values from the previous state
-											const prevOutside = prevHist.length > 0 ? prevHist[prevHist.length - 1].outsideNumbers : [];
-											const prevRemoved = prevHist.length > 0 ? prevHist[prevHist.length - 1].removedIndices : [];
-											return [
-												...prevHist,
-												{
-													outsideNumbers: [...prevOutside, factors[survivor]],
-													removedIndices: [...prevRemoved, firstIdx, index]
-												}
-											];
-										});
+										console.log(`DROP DOWN ANIMATION END [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop + 20}), (0, 50px moved)`);
+										
+										// Simple approach: update state and clear animation
+										setRemovedIndices(prev => [...prev, firstIdx, index]);
+										setOutsideNumbers(prev => [...prev, factors[survivor]]);
 										setCombineAnim(null);
-									}, 400);
+										
+										console.log('Animation complete, state updated');
 									}, 400);
 								}, 400);
 							}, 400); // Pause after combine
@@ -699,7 +727,6 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const nextDisabled = animate || (showFactors && (countAvailablePairs() > 0 || showSimplified));
-	console.log('nextDisabled:', nextDisabled, 'countAvailablePairs:', countAvailablePairs(), 'removedIndices:', removedIndices);
 
 	// Function to count all available same-number pairs under the radical
 	function countAvailablePairs() {
@@ -716,10 +743,12 @@ const SimplifySqRtPrime = () => {
 	useEffect(() => {
 		const currentCount = countAvailablePairs();
 		if (prevPairCount.current > 0 && currentCount === 0) {
-			console.log('All available pairs have been selected!');
+			// All available pairs have been selected
 		}
 		prevPairCount.current = currentCount;
 	}, [removedIndices, factors]);
+
+
 
 	return (
 		<div className="prime-factorization-outer">
@@ -769,9 +798,9 @@ const SimplifySqRtPrime = () => {
 					<>
 						<div className="prime-factors-fade-in center-content">
 							<div className="factor-string-container custom-sqrt-radical">
-								{visibleIndices.length === 0 ? (
+								{visibleIndices.length === 0 && !combineAnim ? (
 									<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: '#000', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
-										{outsideNumbers.length > 0 ? outsideNumbers.join(' × ') : ''}
+										{outsideNumbers && outsideNumbers.length > 0 ? outsideNumbers.join(' × ') : '1'}
 									</span>
 								) : (
 									renderSVGStepRadical({

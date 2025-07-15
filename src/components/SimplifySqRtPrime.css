@@ -451,9 +451,14 @@ button.prime-factorization-next-btn.disabled,
 } 
 
 .number-stay-in-position {
-  /* Keep the number in its coefficient position during radicalShift phase */
+  /* Keep the number in its coefficient position during radicalShift and settle phases */
   transform: translate(var(--move-left-x, 0px), -50px);
   z-index: 12;
+}
+
+/* Special case for settle phase - keep the number at the final position */
+.number-stay-in-position.settle {
+  transform: translate(var(--move-left-x, 0px), 0px);
 }
 
 .radical-shift-right {
