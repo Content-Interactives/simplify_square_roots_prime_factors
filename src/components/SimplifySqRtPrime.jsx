@@ -552,6 +552,34 @@ const SimplifySqRtPrime = () => {
 	// --- End reference logic ---
 
 	const handleRandomClick = () => {
+		// Complete any pending animations and reset to very beginning
+		console.log('Random clicked - completing animations and resetting');
+		
+		// Clear any pending timeouts by setting a flag
+		window.randomClicked = true;
+		
+		// If there's an active combine animation, complete it immediately
+		if (combineAnim) {
+			console.log('Completing active combine animation');
+			// Complete the animation by updating state as if it finished
+			if (combineAnim.indices && combineAnim.indices.length === 2) {
+				const [firstIdx, secondIdx] = combineAnim.indices;
+				const survivor = combineAnim.survivor;
+				setRemovedIndices(prev => [...prev, firstIdx, secondIdx]);
+				setOutsideNumbers(prev => [...prev, factors[survivor]]);
+			}
+		}
+		
+		// If we're in the middle of a next animation, complete it
+		if (animate) {
+			console.log('Completing next animation');
+			setShowFactors(true);
+			setAnimate(false);
+			setFadeOut(false);
+			setFadeOutFirstStep(false);
+		}
+		
+		// Reset all state to beginning
 		setNumber((prev) => getRandomNumber(prev));
 		setShowFactors(false);
 		setShowSimplified(false);
@@ -562,18 +590,101 @@ const SimplifySqRtPrime = () => {
 		setRemovedIndices([]);
 		setOutsideNumbers([]);
 		setHistory([]);
+		setCombineAnim(null);
+		setAnimatingPairIndices([]);
+		lastMovedPair.current = [];
+		setTelescopeLoaded(false);
+		
+		// Clear the flag after a short delay
+		setTimeout(() => {
+			window.randomClicked = false;
+		}, 100);
 	};
 
 	const handleNextClick = () => {
-		if (showFactors && countAvailablePairs() === 0 && !showSimplified) {
+		console.log('Next clicked - current state:', { 
+			showFactors, 
+			showSimplified, 
+			countAvailablePairs: countAvailablePairs(),
+			removedIndices,
+			outsideNumbers,
+			combineAnim
+		});
+		
+		// If we're at the simplified step, stay there
+		if (showSimplified) {
+			console.log('Already at simplified step');
+			return;
+		}
+		
+		// If we're at the prime factorization step and no pairs are available, go to simplified
+		if (showFactors && countAvailablePairs() === 0) {
+			console.log('No pairs available, going to simplified');
 			setShowSimplified(true);
 			return;
 		}
+		
+		// If there are any outside numbers or removed indices, we're in the middle of something
+		// Force a complete reset and start fresh
+		if (outsideNumbers.length > 0 || removedIndices.length > 0 || combineAnim) {
+			console.log('Detected leftover state, forcing complete reset');
+			setShowFactors(false);
+			setShowSimplified(false);
+			setAnimate(false);
+			setFadeOut(false);
+			setFadeOutFirstStep(false);
+			setHighlightedIndices([]);
+			setRemovedIndices([]);
+			setOutsideNumbers([]);
+			setHistory([]);
+			setCombineAnim(null);
+			setAnimatingPairIndices([]);
+			lastMovedPair.current = [];
+			setTelescopeLoaded(false);
+			
+			// Then go to prime factorization step
+			setTimeout(() => {
+				// Check if random was clicked during animation
+				if (window.randomClicked) {
+					console.log('Random clicked during reset animation - stopping');
+					return;
+				}
+				
+				console.log('Going to prime factorization step after reset');
+				setAnimate(true);
+				setFadeOut(true);
+				setFadeOutFirstStep(true);
+				setTelescopeLoaded(false);
+				setTimeout(() => {
+					// Check if random was clicked during animation
+					if (window.randomClicked) {
+						console.log('Random clicked during reset animation - stopping');
+						return;
+					}
+					
+					setShowFactors(true);
+					setFadeOut(false);
+					setFadeOutFirstStep(false);
+					setAnimate(false);
+					setShowSimplified(false);
+				}, 350);
+			}, 100);
+			return;
+		}
+		
+		// Otherwise, go to the prime factorization step (from the initial square root view)
+		console.log('Going to prime factorization step');
 		setAnimate(true);
 		setFadeOut(true);
 		setFadeOutFirstStep(true);
 		setTelescopeLoaded(false);
 		setTimeout(() => {
+			// Check if random was clicked during animation
+			if (window.randomClicked) {
+				console.log('Random clicked during next animation - stopping');
+				return;
+			}
+			
 			setShowFactors(true);
 			setFadeOut(false);
 			setFadeOutFirstStep(false);
@@ -635,6 +746,12 @@ const SimplifySqRtPrime = () => {
 					setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'up' });
 					
 					setTimeout(() => {
+						// Check if random was clicked during animation
+						if (window.randomClicked) {
+							console.log('Random clicked during animation - stopping');
+							return;
+						}
+						
 						// Log MOVE UP animation end
 						console.log(`MOVE UP ANIMATION END [Number ${factors[firstIdx]}]: (${radicalStart + (firstIdx * numberWidth)}, ${radicalTop - 30}), (0, -50px moved)`);
 						console.log(`MOVE UP ANIMATION END [Number ${factors[index]}]: (${radicalStart + (index * numberWidth)}, ${radicalTop - 30}), (0, -50px moved)`);
@@ -646,6 +763,12 @@ const SimplifySqRtPrime = () => {
 						setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'combine' });
 						
 						setTimeout(() => {
+							// Check if random was clicked during animation
+							if (window.randomClicked) {
+								console.log('Random clicked during animation - stopping');
+								return;
+							}
+							
 							// Log COMBINE animation end
 							const slideX = (Math.max(firstIdx, index) - Math.min(firstIdx, index)) * numberWidth;
 							console.log(`COMBINE ANIMATION END [Number ${factors[Math.max(firstIdx, index)]} slides to Number ${factors[Math.min(firstIdx, index)]}]: (${radicalStart + (Math.min(firstIdx, index) * numberWidth)}, ${radicalTop - 30}), (${slideX}, 0px moved)`);
@@ -653,12 +776,24 @@ const SimplifySqRtPrime = () => {
 							
 							// Add a pause before moveLeft
 							setTimeout(() => {
+								// Check if random was clicked during animation
+								if (window.randomClicked) {
+									console.log('Random clicked during animation - stopping');
+									return;
+								}
+								
 								// Log MOVE LEFT animation start
 								console.log(`MOVE LEFT ANIMATION START [Survivor Number ${factors[survivor]}]: (${radicalStart + (survivor * numberWidth)}, ${radicalTop - 30})`);
 								
 								setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveLeft' });
 								
 								setTimeout(() => {
+									// Check if random was clicked during animation
+									if (window.randomClicked) {
+										console.log('Random clicked during animation - stopping');
+										return;
+									}
+									
 									// Calculate target position for survivor
 									const targetX = -(radicalStart + (survivor * numberWidth) - 28);
 									console.log(`MOVE LEFT ANIMATION END [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop - 30}), (${targetX - (radicalStart + (survivor * numberWidth))}, 0px moved)`);
@@ -669,6 +804,12 @@ const SimplifySqRtPrime = () => {
 									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'dropDown' });
 									
 									setTimeout(() => {
+										// Check if random was clicked during animation
+										if (window.randomClicked) {
+											console.log('Random clicked during animation - stopping');
+											return;
+										}
+										
 										console.log(`DROP DOWN ANIMATION END [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop + 20}), (0, 50px moved)`);
 										
 										// Simple approach: update state and clear animation
@@ -837,9 +978,9 @@ const SimplifySqRtPrime = () => {
 					</>
 				)}
 				<button
-					className={`prime-factorization-back-btn ${!(showFactors || showSimplified) ? 'disabled' : ''}`}
+					className={`prime-factorization-back-btn ${!(showFactors || showSimplified) || combineAnim ? 'disabled' : ''}`}
 					onClick={handleBackClick}
-					disabled={!(showFactors || showSimplified)}
+					disabled={!(showFactors || showSimplified) || combineAnim}
 				>
 					&lt;
 				</button>
