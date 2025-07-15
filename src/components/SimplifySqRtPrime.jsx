@@ -432,10 +432,11 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                             <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...combineStyle }} className={`${combineClass} ${settleClass}`}>
                       <rect
                         x={xPosition}
-                        y={radicalTop + radicalYOffset}
+                        y={radicalTop + radicalYOffset - 2}
                         width={rectWidth}
                         height="32"
-                        fill={isHighlighted ? '#fef08a' : 'transparent'}
+                        rx="4"
+                        fill={isHighlighted ? '#008545' : 'transparent'}
                         onClick={highlightable && handleNumberClick ? () => handleNumberClick(factorIdx) : undefined}
                       />
                       <text
@@ -445,7 +446,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                                 fontFamily="Proxima Nova"
                                 fontSize={numberFontSize}
                                 fontWeight="400"
-                                fill={color}
+                                fill={isHighlighted ? '#ffffff' : color}
                         style={{ pointerEvents: 'none' }}
                       >
                         {item.value}
