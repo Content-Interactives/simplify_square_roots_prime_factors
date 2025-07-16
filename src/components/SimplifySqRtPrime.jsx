@@ -6,6 +6,7 @@ import FlexiWave from '../assets/All Flexi Poses/PNG/Flexi_Wave.png';
 import FlexiTelescope from '../assets/All Flexi Poses/PNG/Flexi_Telescope.png';
 import FlexiWoah from '../assets/All Flexi Poses/PNG/Flexi_Woah.png';
 import FlexiStars from '../assets/All Flexi Poses/PNG/Flexi_Stars.png';
+import FlexiWizard from '../assets/All Flexi Poses/GIF/Flexi_Wizard-large.gif';
 
 const SIMPLIFIABLE_NUMBERS = [4, 8, 9, 12, 16, 18, 20, 24, 25, 27, 28, 32, 36, 40, 44, 45, 48, 49, 50, 52, 54, 56, 60, 63, 72, 75, 76, 80, 81, 84, 88, 90, 96, 98, 100, 104, 108, 112, 116, 117, 120, 121, 124, 125, 126, 132, 135, 136, 140, 147, 148, 150, 152, 153, 156, 160, 162, 164, 168, 169, 171, 172, 176, 180, 184, 188, 189, 196, 198, 200];
 
@@ -37,7 +38,7 @@ function getPrimeFactors(n) {
 }
 
 // Helper for SVG radical rendering (shared by both steps)
-function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false }) {
+function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false, coefficientCombineAnim = null, coefficientFadeOut = false, showProduct = false, noSimplificationNeeded = false, hideRadicalWhenOnlyCoefficients = false }) {
   // Defensive: ensure coefficient is always an array
   let coeffArray = [];
   if (Array.isArray(coefficient)) {
@@ -48,14 +49,19 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
     coeffArray = [];
   }
   
+  // Check if we should hide the radical (only coefficients, no numbers under radical)
+  const shouldHideRadical = hideRadicalWhenOnlyCoefficients && coeffArray.length > 0 && numbers.length === 0;
+  
   // Build expression array
   const expression = [];
-  numbers.forEach((value, idx) => {
-    expression.push({ type: 'number', value, id: idx });
-    if (idx < numbers.length - 1) {
-      expression.push({ type: 'symbol', value: '×', id: `x-${idx}` });
-    }
-  });
+  if (numbers.length > 0) {
+    numbers.forEach((value, idx) => {
+      expression.push({ type: 'number', value, id: idx });
+      if (idx < numbers.length - 1) {
+        expression.push({ type: 'symbol', value: '×', id: `x-${idx}` });
+      }
+    });
+  }
   const numberFontSize = 30; // new font size for numbers under the radical
   const numberWidth = 30; // adjust width per number or symbol to match font size
   const radicalBuffer = 0; // no extra left buffer
@@ -67,9 +73,16 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   const radicalHook = radicalTop + 25;
   const radicalHookEnd = radicalTop + 45;
   const radicalBarY = radicalTop;
+  
+  // Use green color for everything when no simplification is needed
+  const finalColor = noSimplificationNeeded ? '#008545' : color;
+  const finalRadicalColor = noSimplificationNeeded ? '#008545' : radicalColor;
   // Dynamically adjust radicalStart for single, double, triple digit numbers
   let radicalStart;
-  if (numbers.length === 1) {
+  if (numbers.length === 0) {
+    // No numbers under radical, use default position
+    radicalStart = 38 + radicalBuffer;
+  } else if (numbers.length === 1) {
     // Use measureTextWidth to get the width of the number
     const numStr = String(numbers[0]);
     const numWidth = measureTextWidth(numStr, numberFontSize);
@@ -79,7 +92,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
     radicalStart = 38 + radicalBuffer;
   }
   // Now calculate radicalEnd after all dependencies are defined
-  const radicalEnd = radicalStart + (expression.length * numberWidth);
+  const radicalEnd = numbers.length > 0 ? radicalStart + (expression.length * numberWidth) : radicalStart + 30; // Minimum width when no numbers
   const radicalBarXStart = radicalStart - 14;
   const radicalBarXEnd = radicalEnd + 10;
   const getSquareRootWidth = () => radicalEnd;
@@ -100,9 +113,15 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   // Calculate the total SVG width
   const svgWidth = 480;
   // Calculate the content width (radical + numbers + symbols)
-  const contentWidth = radicalOffset + (expression.length * numberWidth) + radicalStart;
+  const contentWidth = shouldHideRadical ? coeffX : radicalOffset + (expression.length * numberWidth) + radicalStart;
   // Calculate the offset to center the content
   const centerOffset = Math.max(0, (svgWidth - contentWidth) / 2);
+  
+  // Calculate the position where coefficients should be when radical is hidden
+  // This maintains the same visual position as when the radical was present
+  const coeffPositionWhenRadicalHidden = shouldHideRadical ? 
+    (svgWidth - coeffX) / 2 : // Center the coefficients
+    0; // Normal positioning when radical is visible
   // Set the viewBox to match the new height
   const viewBox = `0 0 ${svgWidth} ${radicalHeight}`;
   // Render coefficient as array or single value
@@ -118,43 +137,138 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   // Calculate x positions for each coefficient and symbol
   let coeffElements = [];
   let coeffXLocal = 0;
-  coeffArray.forEach((n, i) => {
-    const nStr = String(n);
-    const nWidth = numberWidth; // use same width as numbers under radical
-    coeffElements.push(
-      <text
-        key={`coeff-${i}`}
-        x={coeffXLocal + nWidth / 2}
-        y={radicalTop + radicalYOffset + 24}
-        textAnchor="middle"
-        fontFamily="Proxima Nova"
-        fontSize={numberFontSize}
-        fontWeight="400"
-        fill={color}
-      >
-        {n}
-      </text>
-    );
-    coeffXLocal += nWidth;
-    if (i < coeffArray.length - 1) {
-      const timesWidth = numberWidth; // use same width for ×
+  
+  // Handle coefficient animation - simple slide like pair combining
+  if (coefficientCombineAnim && coeffArray.length > 1) {
+          if (showProduct) {
+        // Show the final product in the rightmost coefficient position
+        const combinedValue = coeffArray.reduce((a, b) => a * b, 1);
+        const rightmostX = coeffXLocal + numberWidth; // Position of rightmost coefficient
+        coeffElements.push(
+          <text
+            key="product"
+            x={rightmostX + numberWidth / 2 + 10}
+            y={radicalTop + radicalYOffset + 24}
+            textAnchor="middle"
+            fontFamily="Proxima Nova"
+            fontSize={numberFontSize}
+            fontWeight="400"
+            fill="#008545"
+            style={{
+              opacity: 0,
+              animation: 'fadeIn 0.4s ease forwards'
+            }}
+          >
+            {combinedValue}
+          </text>
+        );
+    } else {
+    coeffArray.forEach((n, i) => {
+      const nStr = String(n);
+      const nWidth = numberWidth;
+      let transformX = 0;
+      let opacity = 1;
+      
+      if (i === 0) {
+        // Left coefficient slides right to fully overlap with right coefficient
+        // Calculate the distance from left coefficient to right coefficient position
+        const leftCoeffX = coeffXLocal;
+        const rightCoeffX = coeffXLocal + nWidth + numberWidth; // Skip the × symbol
+        transformX = rightCoeffX - leftCoeffX;
+      }
+      // Right coefficient stays in place
+      
+      // Apply fade out if in fade out phase
+      if (coefficientFadeOut) {
+        opacity = 0;
+      }
+      
       coeffElements.push(
         <text
-          key={`coeff-times-${i}`}
-          x={coeffXLocal + timesWidth / 2}
+          key={`coeff-${i}`}
+          x={coeffXLocal + nWidth / 2}
           y={radicalTop + radicalYOffset + 24}
           textAnchor="middle"
           fontFamily="Proxima Nova"
-          fontSize={numberFontSize - 6}
+          fontSize={numberFontSize}
           fontWeight="400"
           fill={color}
+          style={{
+            transform: `translateX(${transformX}px)`,
+            opacity: opacity,
+            transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease'
+          }}
         >
-          ×
+          {n}
         </text>
       );
-      coeffXLocal += timesWidth;
+      coeffXLocal += nWidth;
+      
+      if (i < coeffArray.length - 1) {
+        const timesWidth = numberWidth;
+        coeffElements.push(
+          <text
+            key={`coeff-times-${i}`}
+            x={coeffXLocal + timesWidth / 2}
+            y={radicalTop + radicalYOffset + 24}
+            textAnchor="middle"
+            fontFamily="Proxima Nova"
+            fontSize={numberFontSize - 6}
+            fontWeight="400"
+            fill={color}
+            style={{
+              opacity: 0,
+              transition: 'opacity 0.3s ease'
+            }}
+          >
+            ×
+          </text>
+        );
+        coeffXLocal += timesWidth;
+      }
+    });
     }
-  });
+  } else {
+    // Normal coefficient rendering (no animation)
+    coeffArray.forEach((n, i) => {
+      const nStr = String(n);
+      const nWidth = numberWidth; // use same width as numbers under radical
+      const textColor = noSimplificationNeeded ? '#008545' : color; // Green if no simplification needed
+      coeffElements.push(
+        <text
+          key={`coeff-${i}`}
+          x={coeffXLocal + nWidth / 2}
+          y={radicalTop + radicalYOffset + 24}
+          textAnchor="middle"
+          fontFamily="Proxima Nova"
+          fontSize={numberFontSize}
+          fontWeight="400"
+          fill={textColor}
+        >
+          {n}
+        </text>
+      );
+      coeffXLocal += nWidth;
+      if (i < coeffArray.length - 1) {
+        const timesWidth = numberWidth; // use same width for ×
+        coeffElements.push(
+          <text
+            key={`coeff-times-${i}`}
+            x={coeffXLocal + timesWidth / 2}
+            y={radicalTop + radicalYOffset + 24}
+            textAnchor="middle"
+            fontFamily="Proxima Nova"
+            fontSize={numberFontSize - 6}
+            fontWeight="400"
+            fill={textColor}
+          >
+            ×
+          </text>
+        );
+        coeffXLocal += timesWidth;
+      }
+    });
+  }
   // Calculate the total width of all coefficients (coefficient)
   let totalCoeffWidth = 0;
   coeffArray.forEach((n, i) => {
@@ -202,6 +316,9 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
         viewBox={viewBox}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        style={{
+          transform: 'translateZ(0)'
+        }}
       >
         {/* Coefficient numbers to the left of the radical, spaced dynamically */}
         {/* Center the radical and numbers group, including coefficients */}
@@ -231,10 +348,10 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
           }
           
           return (
-            <g transform={`translate(${centerOffset},0)`}>
+            <g transform={`translate(${shouldHideRadical ? coeffPositionWhenRadicalHidden : centerOffset},0)`}>
               {/* Move coefficients left so they don't overlap the radical, with extra space for multiple coefficients */}
               <g
-                transform={`translate(${-24 - extraCoeffSpace},0)`}
+                transform={`translate(${shouldHideRadical ? 0 : -24 - extraCoeffSpace},0)`}
                 className={`${coeffShiftClass} ${settleClass}`}
                 style={coeffShiftX ? { '--coeff-shift-x': `-${coeffShiftX}px` } : {}}
               >
@@ -243,6 +360,11 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
         {/* Radical and numbers, shifted right if coefficient present */}
         {/* Calculate radical shift for new coefficient */}
         {(() => {
+          // If we should hide the radical, don't render it
+          if (shouldHideRadical) {
+            return null;
+          }
+          
           // Calculate the total width of all coefficients (coefficient)
                 // REVERT: Remove radicalOffset from the translate below so radical is not shifted by coefficient width
                 // let totalCoeffWidth = 0;
@@ -375,10 +497,13 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
             >
               <polyline
                 points={`10,${radicalHook} 18,${radicalHookEnd} 32,${radicalTop} ${radicalBarXEnd},${radicalBarY}`}
-                        stroke={radicalColor}
+                stroke={finalRadicalColor}
                 strokeWidth="4"
                 fill="none"
                 strokeLinejoin="round"
+                style={{ 
+                  transform: 'translateZ(0)'
+                }}
               />
               {expression.map((item, index) => {
                 let xPosition = radicalStart + (index * numberWidth);
@@ -443,11 +568,14 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                         x={xPosition + rectWidth / 2}
                         y={radicalTop + radicalYOffset + 24}
                         textAnchor="middle"
-                                fontFamily="Proxima Nova"
-                                fontSize={numberFontSize}
-                                fontWeight="400"
-                                fill={isHighlighted ? '#ffffff' : color}
-                        style={{ pointerEvents: 'none' }}
+                        fontFamily="Proxima Nova"
+                        fontSize={numberFontSize}
+                        fontWeight="400"
+                        fill={isHighlighted ? '#ffffff' : finalColor}
+                        style={{ 
+                          pointerEvents: 'none',
+                          transform: 'translateZ(0)'
+                        }}
                       >
                         {item.value}
                       </text>
@@ -460,10 +588,13 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                       x={xPosition + 10}
                       y={radicalTop + radicalYOffset + 24}
                       textAnchor="middle"
-                              fontFamily="Proxima Nova"
-                              fontSize={numberFontSize - 6}
-                              fontWeight="400"
-                              fill={color}
+                      fontFamily="Proxima Nova"
+                      fontSize={numberFontSize - 6}
+                      fontWeight="400"
+                      fill={finalColor}
+                      style={{
+                        transform: 'translateZ(0)'
+                      }}
                     >
                       {item.value}
                     </text>
@@ -482,6 +613,113 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
     </span>
   );
 }
+
+// Component for animated coefficient display
+const AnimatedCoefficients = ({ coefficients, slideAnim, fadeOutAnim, showProductAnim }) => {
+	console.log('AnimatedCoefficients rendered with:', { coefficients, slideAnim, fadeOutAnim, showProductAnim, coefficientsLength: coefficients.length });
+	
+	if (coefficients.length !== 2) {
+		console.log('Using fallback display - not exactly 2 coefficients');
+		// Fallback to normal display
+		return (
+			<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: '#000', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
+				{coefficients.join(' × ')}
+			</span>
+		);
+	}
+
+	console.log('Using animated display');
+	const [leftNum, rightNum] = coefficients;
+	const centerX = 240; // Center of the container
+	const numberWidth = 60; // Approximate width of each number
+	const spacing = 20; // Space between numbers and × symbol
+	
+	// Calculate initial positions
+	const leftStartX = centerX - numberWidth - spacing;
+	const rightStartX = centerX + spacing;
+	
+	// Calculate final positions (overlap in center)
+	const finalX = centerX - numberWidth / 2;
+	
+	// Calculate opacity based on fade out state
+	const opacity = fadeOutAnim ? 0 : 1;
+	
+	// Calculate product
+	const product = leftNum * rightNum;
+	
+	return (
+		<div style={{ position: 'relative', width: '480px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+			{/* Left number */}
+			<span 
+				style={{ 
+					position: 'absolute',
+					left: leftStartX,
+					fontFamily: 'Proxima Nova, Arial, sans-serif', 
+					fontWeight: 400, 
+					fontSize: 38, 
+					color: '#000', 
+					lineHeight: '1.1',
+					transform: slideAnim ? `translateX(${finalX - leftStartX}px)` : 'translateX(0px)',
+					opacity: opacity,
+					transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease'
+				}}
+			>
+				{leftNum}
+			</span>
+			
+			{/* × symbol */}
+			<span 
+				style={{ 
+					position: 'absolute',
+					left: centerX - 10,
+					fontFamily: 'Proxima Nova, Arial, sans-serif', 
+					fontWeight: 400, 
+					fontSize: 32, 
+					color: '#666',
+					opacity: 0,
+					transition: 'opacity 0.3s ease'
+				}}
+			>
+				×
+			</span>
+			
+			{/* Right number */}
+			<span 
+				style={{ 
+					position: 'absolute',
+					left: rightStartX,
+					fontFamily: 'Proxima Nova, Arial, sans-serif', 
+					fontWeight: 400, 
+					fontSize: 38, 
+					color: '#000', 
+					lineHeight: '1.1',
+					transform: slideAnim ? `translateX(${finalX - rightStartX}px)` : 'translateX(0px)',
+					opacity: opacity,
+					transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease'
+				}}
+			>
+				{rightNum}
+			</span>
+			
+			{/* Product */}
+			<span 
+				style={{ 
+					position: 'absolute',
+					left: centerX - 30,
+					fontFamily: 'Proxima Nova, Arial, sans-serif', 
+					fontWeight: 400, 
+					fontSize: 38, 
+					color: '#008545', 
+					lineHeight: '1.1',
+					opacity: showProductAnim ? 1 : 0,
+					transition: 'opacity 0.4s ease'
+				}}
+			>
+				{product}
+			</span>
+		</div>
+	);
+};
 
 // Component for individual clickable numbers
 const ClickableNumber = ({ number, index, isHighlighted, onClick, isRemoved, disabled }) => (
@@ -522,6 +760,16 @@ const SimplifySqRtPrime = () => {
 	const [animatingPairIndices, setAnimatingPairIndices] = useState([]); // NEW: indices of pair being animated
 	// --- Combine Animation State ---
 	const [combineAnim, setCombineAnim] = useState(null); // { indices: [i1, i2], survivor, phase: 'up'|'combine'|'moveLeft'|null }
+	// --- Coefficient Combine Animation State ---
+	const [coefficientCombineAnim, setCoefficientCombineAnim] = useState(false); // Simple boolean for animation
+	const [coefficientFadeOut, setCoefficientFadeOut] = useState(false); // Fade out phase
+	const [showProduct, setShowProduct] = useState(false); // Show the final product
+	const [noSimplificationNeeded, setNoSimplificationNeeded] = useState(false); // No animation needed
+	// --- Coefficient Slide Animation State ---
+	const [coefficientSlideAnim, setCoefficientSlideAnim] = useState(false); // Simple slide animation for coefficients only
+	const [coefficientFadeOutAnim, setCoefficientFadeOutAnim] = useState(false); // Fade out animation after overlap
+	const [showProductAnim, setShowProductAnim] = useState(false); // Show product animation after fade out
+
 
 	useEffect(() => {
 		setNumber(getRandomNumber()); // Start with a random number
@@ -594,6 +842,15 @@ const SimplifySqRtPrime = () => {
 		setAnimatingPairIndices([]);
 		lastMovedPair.current = [];
 		setTelescopeLoaded(false);
+		// Reset coefficient animation state
+		setCoefficientCombineAnim(false);
+		setCoefficientFadeOut(false);
+		setShowProduct(false);
+		setNoSimplificationNeeded(false);
+		setCoefficientSlideAnim(false);
+		setCoefficientFadeOutAnim(false);
+		setShowProductAnim(false);
+
 		
 		// Clear the flag after a short delay
 		setTimeout(() => {
@@ -617,10 +874,15 @@ const SimplifySqRtPrime = () => {
 			return;
 		}
 		
-		// If we're at the prime factorization step and no pairs are available, go to simplified
+		// If we're at the prime factorization step and no pairs are available, go to simplified step
 		if (showFactors && countAvailablePairs() === 0) {
-			console.log('No pairs available, going to simplified');
+			console.log('No pairs available, going to simplified step');
 			setShowSimplified(true);
+			// Start coefficient animation after a short delay
+			setTimeout(() => {
+				if (window.randomClicked) return;
+				startCoefficientAnimation();
+			}, 500);
 			return;
 		}
 		
@@ -641,6 +903,10 @@ const SimplifySqRtPrime = () => {
 			setAnimatingPairIndices([]);
 			lastMovedPair.current = [];
 			setTelescopeLoaded(false);
+			setCoefficientCombineAnim(false);
+			setCoefficientFadeOut(false);
+			setShowProduct(false);
+			setNoSimplificationNeeded(false);
 			
 			// Then go to prime factorization step
 			setTimeout(() => {
@@ -697,6 +963,14 @@ const SimplifySqRtPrime = () => {
 		if (showSimplified) {
 			// If we're at the simplified step, go back to prime factorization step
 			setShowSimplified(false);
+			// Reset all coefficient animation states so they can play again
+			setCoefficientCombineAnim(false);
+			setCoefficientFadeOut(false);
+			setShowProduct(false);
+			setNoSimplificationNeeded(false);
+			setCoefficientSlideAnim(false);
+			setCoefficientFadeOutAnim(false);
+			setShowProductAnim(false);
 		} else if (showFactors) {
 			// If we're at the prime factorization step, go back to beginning
 			setShowFactors(false);
@@ -868,7 +1142,87 @@ const SimplifySqRtPrime = () => {
 		);
 	};
 
-	const nextDisabled = animate || (showFactors && (countAvailablePairs() > 0 || showSimplified));
+	// Helper functions for coefficient animation
+	const getCoefficients = () => {
+		if (outsideNumbers.length === 0) return [];
+		const factorCounts = {};
+		outsideNumbers.forEach(factor => {
+			factorCounts[factor] = (factorCounts[factor] || 0) + 1;
+		});
+		const coefficients = [];
+		Object.entries(factorCounts).forEach(([factor, count]) => {
+			for (let i = 0; i < count; i++) {
+				coefficients.push(parseInt(factor));
+			}
+		});
+		return coefficients;
+	};
+
+	const getCombinedCoefficient = () => {
+		return outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1;
+	};
+
+	const startCoefficientAnimation = () => {
+		// Use the raw outsideNumbers instead of processing them
+		const coefficients = outsideNumbers;
+		const numbersUnderRadical = visibleIndices.map(i => factors[i]);
+		
+		console.log('startCoefficientAnimation called with:', { coefficients, numbersUnderRadical, coefficientsLength: coefficients.length, numbersUnderRadicalLength: numbersUnderRadical.length });
+		
+		// Check if no simplification is needed (already simplified)
+		const isAlreadySimplified = (coefficients.length === 0 && numbersUnderRadical.length === 1) || // Just one number under radical
+									(coefficients.length === 1 && numbersUnderRadical.length === 0) || // Just one coefficient
+									(coefficients.length === 1 && numbersUnderRadical.length === 1);   // One coefficient and one number under radical
+		
+		if (isAlreadySimplified) {
+			console.log('No simplification needed - already simplified');
+			setNoSimplificationNeeded(true);
+			return;
+		}
+		
+		// Check if we have exactly 2 coefficients (regardless of numbers under radical)
+		if (coefficients.length === 2) {
+			console.log('Starting coefficient slide animation for 2 coefficients');
+			setCoefficientSlideAnim(true);
+			
+			// Start fade out after slide completes
+			setTimeout(() => {
+				if (window.randomClicked) return;
+				console.log('Starting coefficient fade out');
+				setCoefficientFadeOutAnim(true);
+				
+				// Show product after fade out completes
+				setTimeout(() => {
+					if (window.randomClicked) return;
+					console.log('Showing product animation');
+					setShowProductAnim(true);
+				}, 400);
+			}, 600);
+		} else if (coefficients.length > 1 || numbersUnderRadical.length > 1) {
+			console.log('Starting coefficient combine animation');
+			setCoefficientCombineAnim(true);
+			
+			// Start fade out after slide animation completes
+			setTimeout(() => {
+				if (window.randomClicked) return;
+				console.log('Starting coefficient fade out');
+				setCoefficientFadeOut(true);
+				
+				// Show product after fade out completes
+				setTimeout(() => {
+					if (window.randomClicked) return;
+					console.log('Showing product');
+					setShowProduct(true);
+				}, 400);
+			}, 600);
+		} else {
+			// Fallback: no simplification needed
+			console.log('No simplification needed - fallback case');
+			setNoSimplificationNeeded(true);
+		}
+	};
+
+	const nextDisabled = animate || (showFactors && countAvailablePairs() > 0) || showSimplified;
 
 	// Function to count all available same-number pairs under the radical
 	function countAvailablePairs() {
@@ -899,7 +1253,7 @@ const SimplifySqRtPrime = () => {
 			<div className="prime-factorization-inner center-content">
 				{number && !showFactors && (
 					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}${fadeOut ? ' sqrt-fade-out' : ''}`}>
-						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors })}
+						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors, coefficientFadeOut: false, showProduct: false, noSimplificationNeeded: false })}
 					</div>
 				)}
 				{number && !showFactors && (
@@ -915,24 +1269,58 @@ const SimplifySqRtPrime = () => {
 						<div className="prime-factors-fade-in center-content">
 							<div className="factor-string-container custom-sqrt-radical">
 								{(() => {
-									const coefficient = outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1;
-									const remainingIndices = factors.map((_, i) => i).filter(i => !removedIndices.includes(i));
-									const radicand = remainingIndices.length > 0 ? remainingIndices.map(i => factors[i]).reduce((a, b) => a * b, 1) : 1;
-									if (radicand === 1) {
-										return <span style={{ fontSize: 38, fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, color: '#008545', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>{coefficient}</span>;
+									console.log('Rendering simplified step:', { coefficientSlideAnim, outsideNumbersLength: outsideNumbers.length, outsideNumbers, noSimplificationNeeded, visibleIndicesLength: visibleIndices.length });
+									
+									// Use animated component if we have exactly 2 coefficients
+									if (outsideNumbers.length === 2) {
+										console.log('Using AnimatedCoefficients component');
+										return (
+											<AnimatedCoefficients 
+												coefficients={outsideNumbers}
+												slideAnim={coefficientSlideAnim}
+												fadeOutAnim={coefficientFadeOutAnim}
+												showProductAnim={showProductAnim}
+											/>
+										);
+									} else if (visibleIndices.length === 0) {
+										// No numbers under radical - use simple span
+										const textColor = noSimplificationNeeded ? '#008545' : '#000';
+										return (
+											<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: textColor, lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
+												{outsideNumbers && outsideNumbers.length > 0 ? outsideNumbers.join(' × ') : '1'}
+											</span>
+										);
+									} else {
+										// There are numbers under the radical - use the SVG rendering
+										return renderSVGStepRadical({
+											coefficient: outsideNumbers.length > 0 ? outsideNumbers : [],
+											numbers: visibleIndices.map(i => factors[i]),
+											highlightable: false, // Disable clicking in simplified step
+											highlightedIndices: [],
+											handleNumberClick: null,
+											visibleIndices,
+											animatingPairIndices,
+											combineAnim,
+											factors,
+											disabled: true,
+											coefficientCombineAnim: coefficientCombineAnim || coefficientFadeOut ? true : false,
+											coefficientFadeOut,
+											showProduct,
+											noSimplificationNeeded,
+											hideRadicalWhenOnlyCoefficients: true
+										});
 									}
-									return renderSVGStepRadical({ coefficient, numbers: [radicand], animatingPairIndices, combineAnim, factors, color: '#008545', radicalColor: '#008545' });
 								})()}
 							</div>
 						</div>
 						<div className="flexi-wave-bubble-container">
 							<img
-								src={FlexiStars}
-								alt="Flexi Stars"
+								src={noSimplificationNeeded ? FlexiStars : FlexiWizard}
+								alt={noSimplificationNeeded ? "Flexi Stars" : "Flexi Wizard"}
 								className="flexi-wave-bottom-left flexi-telescope-fade-in"
 							/>
 							<div className="speech-bubble speech-bubble-fade-in">
-								It's simplified!
+								{noSimplificationNeeded ? 'Simplified!' : 'Simplifying...'}
 							</div>
 						</div>
 					</>
@@ -955,7 +1343,10 @@ const SimplifySqRtPrime = () => {
 										animatingPairIndices,
 										combineAnim,
 										factors,
-										disabled: !!combineAnim
+										disabled: !!combineAnim,
+										coefficientFadeOut: false,
+										showProduct: false,
+										noSimplificationNeeded: false
 									})
 								)}
 							</div>

@@ -330,6 +330,15 @@
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .flexi-first-step-fade-out {
   animation: flexiFirstStepFadeOut 0.35s cubic-bezier(0.4, 0.2, 0.2, 1) forwards;
 }
@@ -473,4 +482,42 @@ button.prime-factorization-next-btn.disabled,
 
 .number-settle-into-place {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-} 
+}
+
+/* Coefficient Animation Styles */
+.coefficient-animation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Proxima Nova', Arial, sans-serif;
+  font-size: 38px;
+  font-weight: 400;
+  color: #000;
+  line-height: 1.1;
+  vertical-align: middle;
+}
+
+.coefficient-left {
+  display: inline-block;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.coefficient-right {
+  display: inline-block;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.coefficient-slide-left {
+  transform: translateX(30px);
+}
+
+.coefficient-slide-right {
+  transform: translateX(-30px);
+}
+
+.coefficient-overlap {
+  transform: translateX(0);
+  opacity: 0.7;
+}
+
+ 
