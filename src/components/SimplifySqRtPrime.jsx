@@ -7,7 +7,7 @@ import FlexiTelescope from '../assets/All Flexi Poses/PNG/Flexi_Telescope.png';
 import FlexiWoah from '../assets/All Flexi Poses/PNG/Flexi_Woah.png';
 import FlexiStars from '../assets/All Flexi Poses/PNG/Flexi_Stars.png';
 
-const SIMPLIFIABLE_NUMBERS = [4, 8, 9, 12, 16, 18, 20, 24, 25, 27, 28, 32, 36, 40, 44, 45, 48, 49, 50, 52, 54, 56, 60, 63, 64, 72, 75, 76, 80, 81, 84, 88, 90, 96, 98, 100, 104, 108, 112, 116, 117, 120, 121, 124, 125, 126, 128, 132, 135, 136, 140, 144, 147, 148, 150, 152, 153, 156, 160, 162, 164, 168, 169, 171, 172, 176, 180, 184, 188, 189, 192, 196, 198, 200];
+const SIMPLIFIABLE_NUMBERS = [4, 8, 9, 12, 16, 18, 20, 24, 25, 27, 28, 32, 36, 40, 44, 45, 48, 49, 50, 52, 54, 56, 60, 63, 72, 75, 76, 80, 81, 84, 88, 90, 96, 98, 100, 104, 108, 112, 116, 117, 120, 121, 124, 125, 126, 132, 135, 136, 140, 147, 148, 150, 152, 153, 156, 160, 162, 164, 168, 169, 171, 172, 176, 180, 184, 188, 189, 196, 198, 200];
 
 const getRandomNumber = (exclude) => {
 	let idx, num;
@@ -524,7 +524,7 @@ const SimplifySqRtPrime = () => {
 	const [combineAnim, setCombineAnim] = useState(null); // { indices: [i1, i2], survivor, phase: 'up'|'combine'|'moveLeft'|null }
 
 	useEffect(() => {
-		setNumber(144); // For testing, always start with 144
+		setNumber(getRandomNumber()); // Start with a random number
 		setRemovedIndices([]);
 		setOutsideNumbers([]);
 	}, []);
