@@ -616,10 +616,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
 
 // Component for animated coefficient display
 const AnimatedCoefficients = ({ coefficients, slideAnim, fadeOutAnim, showProductAnim }) => {
-	console.log('AnimatedCoefficients rendered with:', { coefficients, slideAnim, fadeOutAnim, showProductAnim, coefficientsLength: coefficients.length });
-	
 	if (coefficients.length !== 2) {
-		console.log('Using fallback display - not exactly 2 coefficients');
 		// Fallback to normal display
 		return (
 			<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: '#000', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
@@ -627,8 +624,6 @@ const AnimatedCoefficients = ({ coefficients, slideAnim, fadeOutAnim, showProduc
 			</span>
 		);
 	}
-
-	console.log('Using animated display');
 	const [leftNum, rightNum] = coefficients;
 	const centerX = 240; // Center of the container
 	const numberWidth = 60; // Approximate width of each number
@@ -801,14 +796,12 @@ const SimplifySqRtPrime = () => {
 
 	const handleRandomClick = () => {
 		// Complete any pending animations and reset to very beginning
-		console.log('Random clicked - completing animations and resetting');
 		
 		// Clear any pending timeouts by setting a flag
 		window.randomClicked = true;
 		
 		// If there's an active combine animation, complete it immediately
 		if (combineAnim) {
-			console.log('Completing active combine animation');
 			// Complete the animation by updating state as if it finished
 			if (combineAnim.indices && combineAnim.indices.length === 2) {
 				const [firstIdx, secondIdx] = combineAnim.indices;
@@ -820,7 +813,6 @@ const SimplifySqRtPrime = () => {
 		
 		// If we're in the middle of a next animation, complete it
 		if (animate) {
-			console.log('Completing next animation');
 			setShowFactors(true);
 			setAnimate(false);
 			setFadeOut(false);
@@ -859,24 +851,13 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const handleNextClick = () => {
-		console.log('Next clicked - current state:', { 
-			showFactors, 
-			showSimplified, 
-			countAvailablePairs: countAvailablePairs(),
-			removedIndices,
-			outsideNumbers,
-			combineAnim
-		});
-		
 		// If we're at the simplified step, stay there
 		if (showSimplified) {
-			console.log('Already at simplified step');
 			return;
 		}
 		
 		// If we're at the prime factorization step and no pairs are available, go to simplified step
 		if (showFactors && countAvailablePairs() === 0) {
-			console.log('No pairs available, going to simplified step');
 			setShowSimplified(true);
 			// Start coefficient animation after a short delay
 			setTimeout(() => {
@@ -889,7 +870,6 @@ const SimplifySqRtPrime = () => {
 		// If there are any outside numbers or removed indices, we're in the middle of something
 		// Force a complete reset and start fresh
 		if (outsideNumbers.length > 0 || removedIndices.length > 0 || combineAnim) {
-			console.log('Detected leftover state, forcing complete reset');
 			setShowFactors(false);
 			setShowSimplified(false);
 			setAnimate(false);
@@ -912,11 +892,9 @@ const SimplifySqRtPrime = () => {
 			setTimeout(() => {
 				// Check if random was clicked during animation
 				if (window.randomClicked) {
-					console.log('Random clicked during reset animation - stopping');
 					return;
 				}
 				
-				console.log('Going to prime factorization step after reset');
 				setAnimate(true);
 				setFadeOut(true);
 				setFadeOutFirstStep(true);
@@ -924,7 +902,6 @@ const SimplifySqRtPrime = () => {
 				setTimeout(() => {
 					// Check if random was clicked during animation
 					if (window.randomClicked) {
-						console.log('Random clicked during reset animation - stopping');
 						return;
 					}
 					
@@ -939,7 +916,6 @@ const SimplifySqRtPrime = () => {
 		}
 		
 		// Otherwise, go to the prime factorization step (from the initial square root view)
-		console.log('Going to prime factorization step');
 		setAnimate(true);
 		setFadeOut(true);
 		setFadeOutFirstStep(true);
@@ -947,7 +923,6 @@ const SimplifySqRtPrime = () => {
 		setTimeout(() => {
 			// Check if random was clicked during animation
 			if (window.randomClicked) {
-				console.log('Random clicked during next animation - stopping');
 				return;
 			}
 			
@@ -1013,85 +988,52 @@ const SimplifySqRtPrime = () => {
 					const radicalTop = 80;
 					const numberWidth = 30;
 					
-					// Log MOVE UP animation start
-					console.log(`MOVE UP ANIMATION START [Number ${factors[firstIdx]}]: (${radicalStart + (firstIdx * numberWidth)}, ${radicalTop + 20})`);
-					console.log(`MOVE UP ANIMATION START [Number ${factors[index]}]: (${radicalStart + (index * numberWidth)}, ${radicalTop + 20})`);
-					
 					setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'up' });
 					
 					setTimeout(() => {
 						// Check if random was clicked during animation
 						if (window.randomClicked) {
-							console.log('Random clicked during animation - stopping');
 							return;
 						}
-						
-						// Log MOVE UP animation end
-						console.log(`MOVE UP ANIMATION END [Number ${factors[firstIdx]}]: (${radicalStart + (firstIdx * numberWidth)}, ${radicalTop - 30}), (0, -50px moved)`);
-						console.log(`MOVE UP ANIMATION END [Number ${factors[index]}]: (${radicalStart + (index * numberWidth)}, ${radicalTop - 30}), (0, -50px moved)`);
-						
-						// Log COMBINE animation start
-						console.log(`COMBINE ANIMATION START [Number ${factors[firstIdx]}]: (${radicalStart + (firstIdx * numberWidth)}, ${radicalTop - 30})`);
-						console.log(`COMBINE ANIMATION START [Number ${factors[index]}]: (${radicalStart + (index * numberWidth)}, ${radicalTop - 30})`);
 						
 						setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'combine' });
 						
 						setTimeout(() => {
 							// Check if random was clicked during animation
 							if (window.randomClicked) {
-								console.log('Random clicked during animation - stopping');
 								return;
 							}
-							
-							// Log COMBINE animation end
-							const slideX = (Math.max(firstIdx, index) - Math.min(firstIdx, index)) * numberWidth;
-							console.log(`COMBINE ANIMATION END [Number ${factors[Math.max(firstIdx, index)]} slides to Number ${factors[Math.min(firstIdx, index)]}]: (${radicalStart + (Math.min(firstIdx, index) * numberWidth)}, ${radicalTop - 30}), (${slideX}, 0px moved)`);
-							console.log(`COMBINE ANIMATION END [Number ${factors[Math.min(firstIdx, index)]} stays]: (${radicalStart + (Math.min(firstIdx, index) * numberWidth)}, ${radicalTop - 30}), (0, 0px moved)`);
 							
 							// Add a pause before moveLeft
 							setTimeout(() => {
 								// Check if random was clicked during animation
 								if (window.randomClicked) {
-									console.log('Random clicked during animation - stopping');
 									return;
 								}
-								
-								// Log MOVE LEFT animation start
-								console.log(`MOVE LEFT ANIMATION START [Survivor Number ${factors[survivor]}]: (${radicalStart + (survivor * numberWidth)}, ${radicalTop - 30})`);
 								
 								setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveLeft' });
 								
 								setTimeout(() => {
 									// Check if random was clicked during animation
 									if (window.randomClicked) {
-										console.log('Random clicked during animation - stopping');
 										return;
 									}
 									
 									// Calculate target position for survivor
 									const targetX = -(radicalStart + (survivor * numberWidth) - 28);
-									console.log(`MOVE LEFT ANIMATION END [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop - 30}), (${targetX - (radicalStart + (survivor * numberWidth))}, 0px moved)`);
-									
-									// Log DROP DOWN animation start (combines radical shift and drop down)
-									console.log(`DROP DOWN ANIMATION START [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop - 30})`);
 									
 									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'dropDown' });
 									
 									setTimeout(() => {
 										// Check if random was clicked during animation
 										if (window.randomClicked) {
-											console.log('Random clicked during animation - stopping');
 											return;
 										}
-										
-										console.log(`DROP DOWN ANIMATION END [Survivor Number ${factors[survivor]}]: (${targetX}, ${radicalTop + 20}), (0, 50px moved)`);
 										
 										// Simple approach: update state and clear animation
 										setRemovedIndices(prev => [...prev, firstIdx, index]);
 										setOutsideNumbers(prev => [...prev, factors[survivor]]);
 										setCombineAnim(null);
-										
-										console.log('Animation complete, state updated');
 									}, 400);
 								}, 400);
 							}, 400); // Pause after combine
@@ -1167,57 +1109,47 @@ const SimplifySqRtPrime = () => {
 		const coefficients = outsideNumbers;
 		const numbersUnderRadical = visibleIndices.map(i => factors[i]);
 		
-		console.log('startCoefficientAnimation called with:', { coefficients, numbersUnderRadical, coefficientsLength: coefficients.length, numbersUnderRadicalLength: numbersUnderRadical.length });
-		
 		// Check if no simplification is needed (already simplified)
 		const isAlreadySimplified = (coefficients.length === 0 && numbersUnderRadical.length === 1) || // Just one number under radical
 									(coefficients.length === 1 && numbersUnderRadical.length === 0) || // Just one coefficient
 									(coefficients.length === 1 && numbersUnderRadical.length === 1);   // One coefficient and one number under radical
 		
 		if (isAlreadySimplified) {
-			console.log('No simplification needed - already simplified');
 			setNoSimplificationNeeded(true);
 			return;
 		}
 		
 		// Check if we have exactly 2 coefficients (regardless of numbers under radical)
 		if (coefficients.length === 2) {
-			console.log('Starting coefficient slide animation for 2 coefficients');
 			setCoefficientSlideAnim(true);
 			
 			// Start fade out after slide completes
 			setTimeout(() => {
 				if (window.randomClicked) return;
-				console.log('Starting coefficient fade out');
 				setCoefficientFadeOutAnim(true);
 				
 				// Show product after fade out completes
 				setTimeout(() => {
 					if (window.randomClicked) return;
-					console.log('Showing product animation');
 					setShowProductAnim(true);
 				}, 400);
 			}, 600);
 		} else if (coefficients.length > 1 || numbersUnderRadical.length > 1) {
-			console.log('Starting coefficient combine animation');
 			setCoefficientCombineAnim(true);
 			
 			// Start fade out after slide animation completes
 			setTimeout(() => {
 				if (window.randomClicked) return;
-				console.log('Starting coefficient fade out');
 				setCoefficientFadeOut(true);
 				
 				// Show product after fade out completes
 				setTimeout(() => {
 					if (window.randomClicked) return;
-					console.log('Showing product');
 					setShowProduct(true);
 				}, 400);
 			}, 600);
 		} else {
 			// Fallback: no simplification needed
-			console.log('No simplification needed - fallback case');
 			setNoSimplificationNeeded(true);
 		}
 	};
@@ -1269,11 +1201,8 @@ const SimplifySqRtPrime = () => {
 						<div className="prime-factors-fade-in center-content">
 							<div className="factor-string-container custom-sqrt-radical">
 								{(() => {
-									console.log('Rendering simplified step:', { coefficientSlideAnim, outsideNumbersLength: outsideNumbers.length, outsideNumbers, noSimplificationNeeded, visibleIndicesLength: visibleIndices.length });
-									
 									// Use animated component if we have exactly 2 coefficients
 									if (outsideNumbers.length === 2) {
-										console.log('Using AnimatedCoefficients component');
 										return (
 											<AnimatedCoefficients 
 												coefficients={outsideNumbers}
