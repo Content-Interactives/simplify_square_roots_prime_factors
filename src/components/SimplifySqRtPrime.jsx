@@ -38,7 +38,7 @@ function getPrimeFactors(n) {
 }
 
 // Helper for SVG radical rendering (shared by both steps)
-function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false, coefficientCombineAnim = null, coefficientFadeOut = false, showProduct = false, noSimplificationNeeded = false, hideRadicalWhenOnlyCoefficients = false }) {
+function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false, coefficientSlideAnim = false, coefficientFadeOutAnim = false, showProductAnim = false, radicalCombineAnim = null, radicalFadeOut = false, radicalShowProduct = false, noSimplificationNeeded = false }) {
   // Defensive: ensure coefficient is always an array
   let coeffArray = [];
   if (Array.isArray(coefficient)) {
@@ -48,9 +48,6 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   } else if (coefficient == null) {
     coeffArray = [];
   }
-  
-  // Check if we should hide the radical (only coefficients, no numbers under radical)
-  const shouldHideRadical = hideRadicalWhenOnlyCoefficients && coeffArray.length > 0 && numbers.length === 0;
   
   // Build expression array
   const expression = [];
@@ -95,12 +92,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   const radicalEnd = numbers.length > 0 ? radicalStart + (expression.length * numberWidth) : radicalStart + 30; // Minimum width when no numbers
   const radicalBarXStart = radicalStart - 14;
   const radicalBarXEnd = radicalEnd + 10;
-  const getSquareRootWidth = () => radicalEnd;
-  // Calculate the total width needed for the expression
-  const expressionWidth = (numbers.length * numberWidth) + ((numbers.length - 1) * numberWidth); // numbers + symbols
   // Calculate the width for the radical and coefficients
   const coeffFontSize = numberFontSize;
-  const coeffSpacing = 32;
   let coeffX = 0;
   coeffArray.forEach((n, i) => {
     const nStr = String(n);
@@ -113,15 +106,11 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   // Calculate the total SVG width
   const svgWidth = 480;
   // Calculate the content width (radical + numbers + symbols)
-  const contentWidth = shouldHideRadical ? coeffX : radicalOffset + (expression.length * numberWidth) + radicalStart;
+  const contentWidth = radicalOffset + (expression.length * numberWidth) + radicalStart;
   // Calculate the offset to center the content
   const centerOffset = Math.max(0, (svgWidth - contentWidth) / 2);
   
-  // Calculate the position where coefficients should be when radical is hidden
-  // This maintains the same visual position as when the radical was present
-  const coeffPositionWhenRadicalHidden = shouldHideRadical ? 
-    (svgWidth - coeffX) / 2 : // Center the coefficients
-    0; // Normal positioning when radical is visible
+
   // Set the viewBox to match the new height
   const viewBox = `0 0 ${svgWidth} ${radicalHeight}`;
   // Render coefficient as array or single value
@@ -138,102 +127,105 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   let coeffElements = [];
   let coeffXLocal = 0;
   
-  // Handle coefficient animation - simple slide like pair combining
-  if (coefficientCombineAnim && coeffArray.length > 1) {
-          if (showProduct) {
-        // Show the final product in the rightmost coefficient position
-        const combinedValue = coeffArray.reduce((a, b) => a * b, 1);
-        const rightmostX = coeffXLocal + numberWidth; // Position of rightmost coefficient
-        coeffElements.push(
-          <text
-            key="product"
-            x={rightmostX + numberWidth / 2 + 10}
-            y={radicalTop + radicalYOffset + 24}
-            textAnchor="middle"
-            fontFamily="Proxima Nova"
-            fontSize={numberFontSize}
-            fontWeight="400"
-            fill="#008545"
-            style={{
-              opacity: 0,
-              animation: 'fadeIn 0.4s ease forwards'
-            }}
-          >
-            {combinedValue}
-          </text>
-        );
-    } else {
-    coeffArray.forEach((n, i) => {
-      const nStr = String(n);
-      const nWidth = numberWidth;
-      let transformX = 0;
-      let opacity = 1;
-      
-      if (i === 0) {
-        // Left coefficient slides right to fully overlap with right coefficient
-        // Calculate the distance from left coefficient to right coefficient position
-        const leftCoeffX = coeffXLocal;
-        const rightCoeffX = coeffXLocal + nWidth + numberWidth; // Skip the × symbol
-        transformX = rightCoeffX - leftCoeffX;
-      }
-      // Right coefficient stays in place
-      
-      // Apply fade out if in fade out phase
-      if (coefficientFadeOut) {
-        opacity = 0;
-      }
-      
+
+        // Coefficient rendering with animation
+  if (coefficientSlideAnim && coeffArray.length === 2) {
+    // Handle coefficient animation - left number slides into right number
+    const [leftNum, rightNum] = coeffArray;
+    const leftX = coeffXLocal;
+    const rightX = coeffXLocal + numberWidth + numberWidth; // Skip the × symbol
+    
+    // Left coefficient slides right to overlap with right coefficient
+    coeffElements.push(
+      <text
+        key="coeff-left"
+        x={leftX + numberWidth / 2}
+        y={radicalTop + radicalYOffset + 24}
+        textAnchor="middle"
+        fontFamily="Proxima Nova"
+        fontSize={numberFontSize}
+        fontWeight="400"
+        fill={finalColor}
+        style={{
+          transform: 'translateX(0px)',
+          opacity: coefficientFadeOutAnim ? 0 : 1,
+          transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease',
+          '--slide-distance': `${rightX - leftX}px`
+        }}
+        className={coefficientSlideAnim ? 'coefficient-slide-animation' : ''}
+      >
+        {leftNum}
+      </text>
+    );
+    
+    // Right coefficient stays in place
+    coeffElements.push(
+      <text
+        key="coeff-right"
+        x={rightX + numberWidth / 2}
+        y={radicalTop + radicalYOffset + 24}
+        textAnchor="middle"
+        fontFamily="Proxima Nova"
+        fontSize={numberFontSize}
+        fontWeight="400"
+        fill={finalColor}
+        style={{
+          opacity: coefficientFadeOutAnim ? 0 : 1,
+          transition: 'opacity 0.4s ease'
+        }}
+      >
+        {rightNum}
+      </text>
+    );
+    
+    // Show product after fade out
+    if (showProductAnim) {
+      const product = leftNum * rightNum;
       coeffElements.push(
         <text
-          key={`coeff-${i}`}
-          x={coeffXLocal + nWidth / 2}
+          key="coeff-product"
+          x={rightX + numberWidth / 2}
           y={radicalTop + radicalYOffset + 24}
           textAnchor="middle"
           fontFamily="Proxima Nova"
           fontSize={numberFontSize}
           fontWeight="400"
-          fill={color}
+          fill="#008545"
           style={{
-            transform: `translateX(${transformX}px)`,
-            opacity: opacity,
-            transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease'
+            opacity: 1,
+            transition: 'opacity 0.4s ease'
           }}
         >
-          {n}
+          {product}
         </text>
       );
-      coeffXLocal += nWidth;
-      
-      if (i < coeffArray.length - 1) {
-        const timesWidth = numberWidth;
-        coeffElements.push(
-          <text
-            key={`coeff-times-${i}`}
-            x={coeffXLocal + timesWidth / 2}
-            y={radicalTop + radicalYOffset + 24}
-            textAnchor="middle"
-            fontFamily="Proxima Nova"
-            fontSize={numberFontSize - 6}
-            fontWeight="400"
-            fill={color}
-            style={{
-              opacity: 0,
-              transition: 'opacity 0.3s ease'
-            }}
-          >
-            ×
-          </text>
-        );
-        coeffXLocal += timesWidth;
-      }
-    });
     }
+    
+    // Hide × symbol during animation
+    coeffElements.push(
+      <text
+        key="coeff-times"
+        x={coeffXLocal + numberWidth + numberWidth / 2}
+        y={radicalTop + radicalYOffset + 24}
+        textAnchor="middle"
+        fontFamily="Proxima Nova"
+        fontSize={numberFontSize - 6}
+        fontWeight="400"
+        fill={finalColor}
+        style={{
+          opacity: 0,
+          transition: 'opacity 0.3s ease'
+        }}
+      >
+        ×
+      </text>
+    );
   } else {
     // Normal coefficient rendering (no animation)
     coeffArray.forEach((n, i) => {
       const nStr = String(n);
       const nWidth = numberWidth; // use same width as numbers under radical
-      const textColor = noSimplificationNeeded ? '#008545' : color; // Green if no simplification needed
+      const textColor = finalColor;
       coeffElements.push(
         <text
           key={`coeff-${i}`}
@@ -348,10 +340,10 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
           }
           
           return (
-            <g transform={`translate(${shouldHideRadical ? coeffPositionWhenRadicalHidden : centerOffset},0)`}>
+            <g transform={`translate(${centerOffset},0)`}>
               {/* Move coefficients left so they don't overlap the radical, with extra space for multiple coefficients */}
               <g
-                transform={`translate(${shouldHideRadical ? 0 : -24 - extraCoeffSpace},0)`}
+                transform={`translate(${-24 - extraCoeffSpace},0)`}
                 className={`${coeffShiftClass} ${settleClass}`}
                 style={coeffShiftX ? { '--coeff-shift-x': `-${coeffShiftX}px` } : {}}
               >
@@ -360,8 +352,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
         {/* Radical and numbers, shifted right if coefficient present */}
         {/* Calculate radical shift for new coefficient */}
         {(() => {
-          // If we should hide the radical, don't render it
-          if (shouldHideRadical) {
+          // Only render radical if there are numbers under it
+          if (numbers.length === 0) {
             return null;
           }
           
@@ -377,8 +369,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                 //     totalCoeffWidth += timesWidth + 4;
                 //   }
                 // });
-                // let radicalShiftX = totalCoeffWidth;
-                // let radicalShiftClass = '';
+                let radicalShiftX = totalCoeffWidth;
+                let radicalShiftClass = '';
                 if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown')) {
             let radicalShiftValid = false;
             let newCoeffWidth = 0;
@@ -488,6 +480,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                       );
                     })()}
                     
+
+                    
                     {/* Radical group - excludes survivor during radicalShift and dropDown phases */}
                     <g
                       // REVERT: Remove radicalOffset from the translate below
@@ -505,22 +499,22 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                   transform: 'translateZ(0)'
                 }}
               />
-              {expression.map((item, index) => {
+              {expression.length > 0 && expression.map((item, index) => {
                 let xPosition = radicalStart + (index * numberWidth);
                 if (item.type === 'number') {
                   const factorIdx = visibleIndices[index / 2 | 0];
                   const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
                           
-                          // Skip rendering survivor during moveLeft and dropDown phases (it's rendered separately)
-                          // Also skip rendering the non-survivor number during moveLeft and dropDown phases (after combine animation ends)
-                          if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown') && factorIdx === combineAnim.survivor) {
-                            return null;
-                          }
-                          if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown') && combineAnim.indices.includes(factorIdx) && factorIdx !== combineAnim.survivor) {
-                            return null;
-                          }
+                  // Skip rendering survivor during moveLeft and dropDown phases (it's rendered separately)
+                  // Also skip rendering the non-survivor number during moveLeft and dropDown phases (after combine animation ends)
+                  if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown') && factorIdx === combineAnim.survivor) {
+                    return null;
+                  }
+                  if (combineAnim && (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'dropDown') && combineAnim.indices.includes(factorIdx) && factorIdx !== combineAnim.survivor) {
+                    return null;
+                  }
                           
-                  // Combine animation logic
+                  // Combine animation logic (for prime factorization step)
                   let combineClass = '';
                   let combineStyle = {};
                   if (combineAnim && combineAnim.indices.includes(factorIdx)) {
@@ -534,7 +528,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                         if (factorIdx === Math.max(i1, i2)) {
                           const survivorIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
                           const slideX = (survivorIdx - index) * numberWidth;
-                          combineClass = 'number-slide-to-combine';
+                          combineClass = 'number-slide-to-combine-up';
                           combineStyle = { '--combine-x': `${slideX}px` };
                         } else {
                           combineClass = 'number-move-up-combine';
@@ -543,18 +537,74 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                         combineClass = 'number-move-up-combine';
                       }
                     } else if (combineAnim.phase === 'moveLeft' || combineAnim.phase === 'radicalShift' || combineAnim.phase === 'dropDown' || combineAnim.phase === 'settle') {
-                      // Hide survivor during all phases after combine - it's handled separately
+                      // Handle survivor during all phases after combine
                       if (factorIdx === survivor) {
+                        if (combineAnim.phase === 'moveLeft') {
+                          combineClass = 'number-move-left-after-combine';
+                          // Calculate the slide distance from combine phase
+                          const survivorIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
+                          const rightmostIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === Math.max(i1, i2));
+                          const slideX = (rightmostIdx - survivorIdx) * numberWidth;
+                          combineStyle = { 
+                            '--combine-x': `${slideX}px`,
+                            '--move-left-x': `${slideX - 90}px`
+                          };
+                        } else if (combineAnim.phase === 'dropDown') {
+                          combineClass = 'number-move-down-after-left';
+                          const survivorIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === survivor);
+                          const rightmostIdx = expression.findIndex(e => e.type === 'number' && visibleIndices[e.id] === Math.max(i1, i2));
+                          const slideX = (rightmostIdx - survivorIdx) * numberWidth;
+                          combineStyle = { 
+                            '--combine-x': `${slideX}px`,
+                            '--move-left-x': `${slideX - 90}px`
+                          };
+                        } else {
+                          combineStyle = { display: 'none' };
+                        }
+                      } else {
                         combineStyle = { display: 'none' };
                       }
                     }
                   }
+                  
+                  // Radical simplification animation logic (for simplify step)
+                  if (radicalCombineAnim && radicalCombineAnim.indices.includes(index)) {
+                    const [i1, i2] = radicalCombineAnim.indices;
+                    const survivor = radicalCombineAnim.survivor;
+                    
+                    if (radicalCombineAnim.phase === 'combine') {
+                      if (index !== survivor) {
+                        // Only the rightmost slides left to the leftmost
+                        if (index === Math.max(i1, i2)) {
+                          const slideX = (survivor - index) * numberWidth;
+                          combineClass = 'number-slide-to-combine';
+                          combineStyle = { '--combine-x': `${slideX}px` };
+                        } else {
+                          combineClass = 'number-move-up-combine-simplify';
+                        }
+                      } else {
+                        combineClass = 'number-move-up-combine-simplify';
+                      }
+                    }
+                  }
+                  
+                  // Apply fade out for radical numbers
+                  if (radicalFadeOut) {
+                    combineStyle = { ...combineStyle, opacity: 0, transition: 'opacity 0.4s ease' };
+                  }
+                  
+                  // Show radical product after fade out
+                  if (radicalShowProduct) {
+                    // Hide the original numbers and show the product
+                    combineStyle = { ...combineStyle, display: 'none' };
+                  }
+                  
                   // Calculate rect width based on number of digits
                   const numStr = String(item.value);
                   const rectWidth = Math.max(20, numStr.length * 22); // 22px per digit, min 20px
                   
                   return (
-                            <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...combineStyle }} className={`${combineClass} ${settleClass}`}>
+                    <g key={item.id} style={{ cursor: highlightable ? 'pointer' : 'default', ...combineStyle }} className={`${combineClass} ${settleClass}`}>
                       <rect
                         x={xPosition}
                         y={radicalTop + radicalYOffset - 2}
@@ -582,6 +632,11 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                     </g>
                   );
                 } else if (item.type === 'symbol') {
+                  // Hide multiplication symbols when radical product is shown
+                  if (radicalShowProduct) {
+                    return null;
+                  }
+                  
                   return (
                     <text
                       key={item.id}
@@ -602,6 +657,34 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                 }
                 return null;
               })}
+              
+              {/* Render radical product after fade out */}
+              {radicalShowProduct && numbers.length > 0 && (() => {
+                // Calculate the product of all numbers under the radical
+                const product = numbers.reduce((acc, num) => acc * num, 1);
+                const productStr = String(product);
+                const productWidth = Math.max(20, productStr.length * 22);
+                const productX = radicalStart + (productWidth / 2);
+                
+                return (
+                  <text
+                    key="radical-product"
+                    x={productX}
+                    y={radicalTop + radicalYOffset + 24}
+                    textAnchor="middle"
+                    fontFamily="Proxima Nova"
+                    fontSize={numberFontSize}
+                    fontWeight="400"
+                    fill="#008545"
+                    style={{
+                      opacity: 0,
+                      animation: 'radicalProductFadeIn 0.4s ease forwards'
+                    }}
+                  >
+                    {product}
+                  </text>
+                );
+              })()}
                     </g>
                   </>
                 );
@@ -614,107 +697,7 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   );
 }
 
-// Component for animated coefficient display
-const AnimatedCoefficients = ({ coefficients, slideAnim, fadeOutAnim, showProductAnim }) => {
-	if (coefficients.length !== 2) {
-		// Fallback to normal display
-		return (
-			<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: '#000', lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
-				{coefficients.join(' × ')}
-			</span>
-		);
-	}
-	const [leftNum, rightNum] = coefficients;
-	const centerX = 240; // Center of the container
-	const numberWidth = 60; // Approximate width of each number
-	const spacing = 20; // Space between numbers and × symbol
-	
-	// Calculate initial positions
-	const leftStartX = centerX - numberWidth - spacing;
-	const rightStartX = centerX + spacing;
-	
-	// Calculate final positions (overlap in center)
-	const finalX = centerX - numberWidth / 2;
-	
-	// Calculate opacity based on fade out state
-	const opacity = fadeOutAnim ? 0 : 1;
-	
-	// Calculate product
-	const product = leftNum * rightNum;
-	
-	return (
-		<div style={{ position: 'relative', width: '480px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-			{/* Left number */}
-			<span 
-				style={{ 
-					position: 'absolute',
-					left: leftStartX,
-					fontFamily: 'Proxima Nova, Arial, sans-serif', 
-					fontWeight: 400, 
-					fontSize: 38, 
-					color: '#000', 
-					lineHeight: '1.1',
-					transform: slideAnim ? `translateX(${finalX - leftStartX}px)` : 'translateX(0px)',
-					opacity: opacity,
-					transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease'
-				}}
-			>
-				{leftNum}
-			</span>
-			
-			{/* × symbol */}
-			<span 
-				style={{ 
-					position: 'absolute',
-					left: centerX - 10,
-					fontFamily: 'Proxima Nova, Arial, sans-serif', 
-					fontWeight: 400, 
-					fontSize: 32, 
-					color: '#666',
-					opacity: 0,
-					transition: 'opacity 0.3s ease'
-				}}
-			>
-				×
-			</span>
-			
-			{/* Right number */}
-			<span 
-				style={{ 
-					position: 'absolute',
-					left: rightStartX,
-					fontFamily: 'Proxima Nova, Arial, sans-serif', 
-					fontWeight: 400, 
-					fontSize: 38, 
-					color: '#000', 
-					lineHeight: '1.1',
-					transform: slideAnim ? `translateX(${finalX - rightStartX}px)` : 'translateX(0px)',
-					opacity: opacity,
-					transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease'
-				}}
-			>
-				{rightNum}
-			</span>
-			
-			{/* Product */}
-			<span 
-				style={{ 
-					position: 'absolute',
-					left: centerX - 30,
-					fontFamily: 'Proxima Nova, Arial, sans-serif', 
-					fontWeight: 400, 
-					fontSize: 38, 
-					color: '#008545', 
-					lineHeight: '1.1',
-					opacity: showProductAnim ? 1 : 0,
-					transition: 'opacity 0.4s ease'
-				}}
-			>
-				{product}
-			</span>
-		</div>
-	);
-};
+
 
 // Component for individual clickable numbers
 const ClickableNumber = ({ number, index, isHighlighted, onClick, isRemoved, disabled }) => (
@@ -755,15 +738,16 @@ const SimplifySqRtPrime = () => {
 	const [animatingPairIndices, setAnimatingPairIndices] = useState([]); // NEW: indices of pair being animated
 	// --- Combine Animation State ---
 	const [combineAnim, setCombineAnim] = useState(null); // { indices: [i1, i2], survivor, phase: 'up'|'combine'|'moveLeft'|null }
-	// --- Coefficient Combine Animation State ---
-	const [coefficientCombineAnim, setCoefficientCombineAnim] = useState(false); // Simple boolean for animation
-	const [coefficientFadeOut, setCoefficientFadeOut] = useState(false); // Fade out phase
-	const [showProduct, setShowProduct] = useState(false); // Show the final product
-	const [noSimplificationNeeded, setNoSimplificationNeeded] = useState(false); // No animation needed
-	// --- Coefficient Slide Animation State ---
-	const [coefficientSlideAnim, setCoefficientSlideAnim] = useState(false); // Simple slide animation for coefficients only
-	const [coefficientFadeOutAnim, setCoefficientFadeOutAnim] = useState(false); // Fade out animation after overlap
-	const [showProductAnim, setShowProductAnim] = useState(false); // Show product animation after fade out
+	
+	// --- Simplify Step Animation State ---
+	const [coefficientSlideAnim, setCoefficientSlideAnim] = useState(false); // Coefficient overlap animation
+	const [coefficientFadeOutAnim, setCoefficientFadeOutAnim] = useState(false); // Coefficient fade out
+	const [showProductAnim, setShowProductAnim] = useState(false); // Show coefficient product
+	const [radicalCombineAnim, setRadicalCombineAnim] = useState(null); // Radical numbers overlap animation
+	const [radicalFadeOut, setRadicalFadeOut] = useState(false); // Radical numbers fade out
+	const [radicalShowProduct, setRadicalShowProduct] = useState(false); // Show radical product
+	const [noSimplificationNeeded, setNoSimplificationNeeded] = useState(false); // Already simplified
+
 
 
 	useEffect(() => {
@@ -791,7 +775,7 @@ const SimplifySqRtPrime = () => {
 	const numberWidth = 20;
 	const radicalStart = 28;
 	// Hover logic (optional, for demo parity)
-	const handleNumberHover = (id, isHover) => {};
+
 	// --- End reference logic ---
 
 	const handleRandomClick = () => {
@@ -834,14 +818,14 @@ const SimplifySqRtPrime = () => {
 		setAnimatingPairIndices([]);
 		lastMovedPair.current = [];
 		setTelescopeLoaded(false);
-		// Reset coefficient animation state
-		setCoefficientCombineAnim(false);
-		setCoefficientFadeOut(false);
-		setShowProduct(false);
-		setNoSimplificationNeeded(false);
+		// Reset simplify step animation states
 		setCoefficientSlideAnim(false);
 		setCoefficientFadeOutAnim(false);
 		setShowProductAnim(false);
+		setRadicalCombineAnim(null);
+		setRadicalFadeOut(false);
+		setRadicalShowProduct(false);
+		setNoSimplificationNeeded(false);
 
 		
 		// Clear the flag after a short delay
@@ -883,9 +867,13 @@ const SimplifySqRtPrime = () => {
 			setAnimatingPairIndices([]);
 			lastMovedPair.current = [];
 			setTelescopeLoaded(false);
-			setCoefficientCombineAnim(false);
-			setCoefficientFadeOut(false);
-			setShowProduct(false);
+			// Reset simplify step animation states
+			setCoefficientSlideAnim(false);
+			setCoefficientFadeOutAnim(false);
+			setShowProductAnim(false);
+			setRadicalCombineAnim(null);
+			setRadicalFadeOut(false);
+			setRadicalShowProduct(false);
 			setNoSimplificationNeeded(false);
 			
 			// Then go to prime factorization step
@@ -938,14 +926,14 @@ const SimplifySqRtPrime = () => {
 		if (showSimplified) {
 			// If we're at the simplified step, go back to prime factorization step
 			setShowSimplified(false);
-			// Reset all coefficient animation states so they can play again
-			setCoefficientCombineAnim(false);
-			setCoefficientFadeOut(false);
-			setShowProduct(false);
-			setNoSimplificationNeeded(false);
+			// Reset all simplify step animation states so they can play again
 			setCoefficientSlideAnim(false);
 			setCoefficientFadeOutAnim(false);
 			setShowProductAnim(false);
+			setRadicalCombineAnim(null);
+			setRadicalFadeOut(false);
+			setRadicalShowProduct(false);
+			setNoSimplificationNeeded(false);
 		} else if (showFactors) {
 			// If we're at the prime factorization step, go back to beginning
 			setShowFactors(false);
@@ -991,52 +979,24 @@ const SimplifySqRtPrime = () => {
 					setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'up' });
 					
 					setTimeout(() => {
-						// Check if random was clicked during animation
-						if (window.randomClicked) {
-							return;
-						}
-						
+						if (window.randomClicked) return;
 						setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'combine' });
 						
 						setTimeout(() => {
-							// Check if random was clicked during animation
-							if (window.randomClicked) {
-								return;
-							}
+							if (window.randomClicked) return;
+							setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveLeft' });
 							
-							// Add a pause before moveLeft
 							setTimeout(() => {
-								// Check if random was clicked during animation
-								if (window.randomClicked) {
-									return;
-								}
-								
-								setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'moveLeft' });
+								if (window.randomClicked) return;
+								setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'dropDown' });
 								
 								setTimeout(() => {
-									// Check if random was clicked during animation
-									if (window.randomClicked) {
-										return;
-									}
-									
-									// Calculate target position for survivor
-									const targetX = -(radicalStart + (survivor * numberWidth) - 28);
-									
-									setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'dropDown' });
-									
-									setTimeout(() => {
-										// Check if random was clicked during animation
-										if (window.randomClicked) {
-											return;
-										}
-										
-										// Simple approach: update state and clear animation
-										setRemovedIndices(prev => [...prev, firstIdx, index]);
-										setOutsideNumbers(prev => [...prev, factors[survivor]]);
-										setCombineAnim(null);
-									}, 400);
+									if (window.randomClicked) return;
+									setRemovedIndices(prev => [...prev, firstIdx, index]);
+									setOutsideNumbers(prev => [...prev, factors[survivor]]);
+									setCombineAnim(null);
 								}, 400);
-							}, 400); // Pause after combine
+							}, 400);
 						}, 500);
 					}, 400);
 					return [];
@@ -1084,74 +1044,99 @@ const SimplifySqRtPrime = () => {
 		);
 	};
 
-	// Helper functions for coefficient animation
-	const getCoefficients = () => {
-		if (outsideNumbers.length === 0) return [];
-		const factorCounts = {};
-		outsideNumbers.forEach(factor => {
-			factorCounts[factor] = (factorCounts[factor] || 0) + 1;
-		});
-		const coefficients = [];
-		Object.entries(factorCounts).forEach(([factor, count]) => {
-			for (let i = 0; i < count; i++) {
-				coefficients.push(parseInt(factor));
-			}
-		});
-		return coefficients;
-	};
 
-	const getCombinedCoefficient = () => {
-		return outsideNumbers.length > 0 ? outsideNumbers.reduce((a, b) => a * b, 1) : 1;
-	};
+
+
 
 	const startCoefficientAnimation = () => {
 		// Use the raw outsideNumbers instead of processing them
 		const coefficients = outsideNumbers;
 		const numbersUnderRadical = visibleIndices.map(i => factors[i]);
 		
-		// Check if no simplification is needed (already simplified)
-		const isAlreadySimplified = (coefficients.length === 0 && numbersUnderRadical.length === 1) || // Just one number under radical
-									(coefficients.length === 1 && numbersUnderRadical.length === 0) || // Just one coefficient
-									(coefficients.length === 1 && numbersUnderRadical.length === 1);   // One coefficient and one number under radical
+		// Check if already simplified (1 coefficient and 1 number under radical, or just 1 number under radical)
+		const isAlreadySimplified = (coefficients.length === 1 && numbersUnderRadical.length === 1) || // One coefficient and one number under radical
+									(coefficients.length === 0 && numbersUnderRadical.length === 1) ||   // Just one number under radical
+									(coefficients.length === 1 && numbersUnderRadical.length === 0) ||   // Just one coefficient
+									(coefficients.length === 0 && numbersUnderRadical.length === 0);   // No coefficients and no radical numbers
 		
 		if (isAlreadySimplified) {
 			setNoSimplificationNeeded(true);
 			return;
 		}
 		
-		// Check if we have exactly 2 coefficients (regardless of numbers under radical)
-		if (coefficients.length === 2) {
+		// If there are coefficients that need to simplify (2 or more coefficients)
+		if (coefficients.length >= 2) {
+			// Start coefficient overlap animation
 			setCoefficientSlideAnim(true);
 			
-			// Start fade out after slide completes
+			// After overlap, fade out coefficients
 			setTimeout(() => {
 				if (window.randomClicked) return;
 				setCoefficientFadeOutAnim(true);
 				
-				// Show product after fade out completes
+				// Show product after fade out
 				setTimeout(() => {
 					if (window.randomClicked) return;
 					setShowProductAnim(true);
-				}, 400);
-			}, 600);
-		} else if (coefficients.length > 1 || numbersUnderRadical.length > 1) {
-			setCoefficientCombineAnim(true);
-			
-			// Start fade out after slide animation completes
-			setTimeout(() => {
-				if (window.randomClicked) return;
-				setCoefficientFadeOut(true);
-				
-				// Show product after fade out completes
-				setTimeout(() => {
-					if (window.randomClicked) return;
-					setShowProduct(true);
+					
+					// Check if there are more than 1 number under radical after coefficient simplification
+					setTimeout(() => {
+						if (window.randomClicked) return;
+						startRadicalSimplificationAnimation();
+					}, 400);
 				}, 400);
 			}, 600);
 		} else {
-			// Fallback: no simplification needed
-			setNoSimplificationNeeded(true);
+			// No coefficient simplification needed (0 or 1 coefficient)
+			// Check if radical simplification is needed (more than 1 number under radical)
+			setTimeout(() => {
+				if (window.randomClicked) return;
+				startRadicalSimplificationAnimation();
+			}, 100);
 		}
+	};
+
+	// Function to start radical simplification animation
+	const startRadicalSimplificationAnimation = () => {
+		// In the simplified step, we need to look at the actual numbers under the radical
+		// These are the numbers that are still visible in the simplified step
+		const numbersUnderRadical = visibleIndices.map(i => factors[i]);
+		
+		// If there are no numbers under the radical, no simplification needed
+		if (numbersUnderRadical.length === 0) {
+			setNoSimplificationNeeded(true);
+			return;
+		}
+		
+		// If there's only 1 number under the radical, no simplification needed
+		if (numbersUnderRadical.length <= 1) {
+			setNoSimplificationNeeded(true);
+			return;
+		}
+		
+		// Always animate the first two numbers (rightmost into leftmost)
+		const pairIndices = [0, 2]; // First two numbers in expression array
+		const survivor = 0; // Keep the first one
+		
+		// Start the radical combine animation - just the combine phase
+		setRadicalCombineAnim({ indices: pairIndices, survivor, phase: 'combine' });
+		
+		setTimeout(() => {
+			if (window.randomClicked) return;
+			setRadicalFadeOut(true);
+			
+			// Show product after fade out
+			setTimeout(() => {
+				if (window.randomClicked) return;
+				setRadicalShowProduct(true);
+				
+				// Set simplified state when animation is complete
+				setTimeout(() => {
+					if (window.randomClicked) return;
+					setNoSimplificationNeeded(true);
+				}, 400);
+			}, 400);
+		}, 800);
 	};
 
 	const nextDisabled = animate || (showFactors && countAvailablePairs() > 0) || showSimplified;
@@ -1185,7 +1170,7 @@ const SimplifySqRtPrime = () => {
 			<div className="prime-factorization-inner center-content">
 				{number && !showFactors && (
 					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}${fadeOut ? ' sqrt-fade-out' : ''}`}>
-						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors, coefficientFadeOut: false, showProduct: false, noSimplificationNeeded: false })}
+						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors, coefficientSlideAnim: false, coefficientFadeOutAnim: false, showProductAnim: false, radicalCombineAnim: null, radicalFadeOut: false, radicalShowProduct: false, noSimplificationNeeded: false })}
 					</div>
 				)}
 				{number && !showFactors && (
@@ -1201,19 +1186,9 @@ const SimplifySqRtPrime = () => {
 						<div className="prime-factors-fade-in center-content">
 							<div className="factor-string-container custom-sqrt-radical">
 								{(() => {
-									// Use animated component if we have exactly 2 coefficients
-									if (outsideNumbers.length === 2) {
-										return (
-											<AnimatedCoefficients 
-												coefficients={outsideNumbers}
-												slideAnim={coefficientSlideAnim}
-												fadeOutAnim={coefficientFadeOutAnim}
-												showProductAnim={showProductAnim}
-											/>
-										);
-									} else if (visibleIndices.length === 0) {
+									if (visibleIndices.length === 0) {
 										// No numbers under radical - use simple span
-										const textColor = noSimplificationNeeded ? '#008545' : '#000';
+										const textColor = '#000';
 										return (
 											<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: textColor, lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
 												{outsideNumbers && outsideNumbers.length > 0 ? outsideNumbers.join(' × ') : '1'}
@@ -1232,11 +1207,13 @@ const SimplifySqRtPrime = () => {
 											combineAnim,
 											factors,
 											disabled: true,
-											coefficientCombineAnim: coefficientCombineAnim || coefficientFadeOut ? true : false,
-											coefficientFadeOut,
-											showProduct,
-											noSimplificationNeeded,
-											hideRadicalWhenOnlyCoefficients: true
+											coefficientSlideAnim,
+											coefficientFadeOutAnim,
+											showProductAnim,
+											radicalCombineAnim,
+											radicalFadeOut,
+											radicalShowProduct,
+											noSimplificationNeeded
 										});
 									}
 								})()}
@@ -1273,8 +1250,12 @@ const SimplifySqRtPrime = () => {
 										combineAnim,
 										factors,
 										disabled: !!combineAnim,
-										coefficientFadeOut: false,
-										showProduct: false,
+										coefficientSlideAnim: false,
+										coefficientFadeOutAnim: false,
+										showProductAnim: false,
+										radicalCombineAnim: null,
+										radicalFadeOut: false,
+										radicalShowProduct: false,
 										noSimplificationNeeded: false
 									})
 								)}

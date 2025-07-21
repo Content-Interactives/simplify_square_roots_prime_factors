@@ -410,8 +410,31 @@ button.prime-factorization-next-btn.disabled,
   z-index: 11;
 }
 
-/* Animation for one number sliding over to combine with another (starts from up position) */
+/* Horizontal version for simplify step */
+.number-move-up-combine-simplify {
+  animation: none;
+  z-index: 11;
+}
+
+/* Animation for one number sliding over to combine with another (horizontal only) */
 @keyframes slideToCombine {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--combine-x, 0px), 0);
+    opacity: 1;
+  }
+}
+
+.number-slide-to-combine {
+  animation: slideToCombine 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 11;
+}
+
+/* Up and over version for prime factorization step */
+@keyframes slideToCombineUp {
   0% {
     transform: translate(0, -50px);
     opacity: 1;
@@ -422,14 +445,14 @@ button.prime-factorization-next-btn.disabled,
   }
 }
 
-.number-slide-to-combine {
-  animation: slideToCombine 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+.number-slide-to-combine-up {
+  animation: slideToCombineUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   z-index: 11;
 }
 
 @keyframes moveLeftAfterCombine {
   0% {
-    transform: translate(0, -50px);
+    transform: translate(var(--combine-x, 0px), -50px);
     opacity: 1;
   }
   100% {
@@ -461,7 +484,7 @@ button.prime-factorization-next-btn.disabled,
 
 .number-stay-in-position {
   /* Keep the number in its coefficient position during radicalShift and settle phases */
-  transform: translate(var(--move-left-x, 0px), -50px);
+  transform: translate(var(--move-left-x, 0px), 0);
   z-index: 12;
 }
 
@@ -518,6 +541,28 @@ button.prime-factorization-next-btn.disabled,
 .coefficient-overlap {
   transform: translateX(0);
   opacity: 0.7;
+}
+
+.coefficient-slide-animation {
+  animation: coefficientSlide 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes coefficientSlide {
+  from {
+    transform: translateX(0px);
+  }
+  to {
+    transform: translateX(var(--slide-distance, 60px));
+  }
+}
+
+@keyframes radicalProductFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
  
