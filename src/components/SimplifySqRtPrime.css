@@ -31,7 +31,7 @@
 
 .prime-factorization-title {
   position: absolute;
-  top: 24px;
+  top: 14px;
   left: 24px;
   font-size: 1.3rem;
   font-weight: 700;
@@ -54,7 +54,7 @@
 
 .prime-factorization-random-btn {
   position: absolute;
-  top: 16px;
+  top: 6px;
   right: 20px;
   background: #008545;
   color: #fff;
@@ -567,15 +567,23 @@ button.prime-factorization-next-btn.disabled,
 
 @keyframes centerFinalExpression {
   from {
-    transform: translateX(0);
+    transform: translateX(0) translateY(-20px);
   }
   to {
-    transform: translateX(60px);
+    transform: translateX(60px) translateY(-20px);
   }
 }
 
 .center-final-expression {
   animation: centerFinalExpression 0.4s ease forwards;
+}
+
+.factor-string-container {
+  transform: translateY(-20px);
+}
+
+.center-content {
+  transform: translateY(-20px);
 }
 
  
