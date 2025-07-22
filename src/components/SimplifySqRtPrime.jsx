@@ -38,7 +38,7 @@ function getPrimeFactors(n) {
 }
 
 // Helper for SVG radical rendering (shared by both steps)
-function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false, coefficientSlideAnim = false, coefficientFadeOutAnim = false, showProductAnim = false, radicalCombineAnim = null, radicalFadeOut = false, radicalShowProduct = false, noSimplificationNeeded = false }) {
+function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false, coefficientSlideAnim = false, coefficientFadeOutAnim = false, showProductAnim = false, radicalCombineAnim = null, radicalFadeOut = false, radicalShowProduct = false, noSimplificationNeeded = false, radicalAnimationStep = 0, numberIndices = [] }) {
   // Defensive: ensure coefficient is always an array
   let coeffArray = [];
   if (Array.isArray(coefficient)) {
@@ -504,6 +504,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                 if (item.type === 'number') {
                   const factorIdx = visibleIndices[index / 2 | 0];
                   const isHighlighted = highlightable && highlightedIndices.includes(factorIdx);
+                  
+                  console.log('Rendering - index:', index, 'item:', item, 'factorIdx:', factorIdx);
                           
                   // Skip rendering survivor during moveLeft and dropDown phases (it's rendered separately)
                   // Also skip rendering the non-survivor number during moveLeft and dropDown phases (after combine animation ends)
@@ -569,21 +571,31 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                   
                   // Radical simplification animation logic (for simplify step)
                   if (radicalCombineAnim && radicalCombineAnim.indices.includes(index)) {
-                    const [i1, i2] = radicalCombineAnim.indices;
                     const survivor = radicalCombineAnim.survivor;
+                    
+                    console.log('Radical animation - processing index:', index, 'survivor:', survivor, 'step:', radicalAnimationStep);
                     
                     if (radicalCombineAnim.phase === 'combine') {
                       if (index !== survivor) {
-                        // Only the rightmost slides left to the leftmost
-                        if (index === Math.max(i1, i2)) {
+                        // Check if this number should be animated based on current step
+                        const numberPosition = numberIndices.indexOf(index);
+                        const shouldAnimate = numberPosition <= radicalAnimationStep;
+                        
+                        if (shouldAnimate) {
+                          // All numbers to the right of the survivor slide left to the leftmost position
                           const slideX = (survivor - index) * numberWidth;
                           combineClass = 'number-slide-to-combine';
                           combineStyle = { '--combine-x': `${slideX}px` };
+                          console.log('Radical animation - sliding index:', index, 'slideX:', slideX, 'step:', radicalAnimationStep);
                         } else {
-                          combineClass = 'number-move-up-combine-simplify';
+                          // Keep this number in its original position for now
+                          combineClass = '';
+                          combineStyle = {};
+                          console.log('Radical animation - keeping index:', index, 'in original position');
                         }
                       } else {
                         combineClass = 'number-move-up-combine-simplify';
+                        console.log('Radical animation - survivor moving up:', index);
                       }
                     }
                   }
@@ -747,11 +759,12 @@ const SimplifySqRtPrime = () => {
 	const [radicalFadeOut, setRadicalFadeOut] = useState(false); // Radical numbers fade out
 	const [radicalShowProduct, setRadicalShowProduct] = useState(false); // Show radical product
 	const [noSimplificationNeeded, setNoSimplificationNeeded] = useState(false); // Already simplified
+	const [radicalAnimationStep, setRadicalAnimationStep] = useState(0); // Track animation step
 
 
 
 	useEffect(() => {
-		setNumber(getRandomNumber()); // Start with a random number
+		setNumber(120); // Start with 120 for testing
 		setRemovedIndices([]);
 		setOutsideNumbers([]);
 	}, []);
@@ -826,6 +839,7 @@ const SimplifySqRtPrime = () => {
 		setRadicalFadeOut(false);
 		setRadicalShowProduct(false);
 		setNoSimplificationNeeded(false);
+		setRadicalAnimationStep(0);
 
 		
 		// Clear the flag after a short delay
@@ -1082,7 +1096,13 @@ const SimplifySqRtPrime = () => {
 					// Check if there are more than 1 number under radical after coefficient simplification
 					setTimeout(() => {
 						if (window.randomClicked) return;
-						startRadicalSimplificationAnimation();
+						// If there are no radical numbers left, we're done
+						const remainingRadicalNumbers = visibleIndices.map(i => factors[i]);
+						if (remainingRadicalNumbers.length <= 1) {
+							setNoSimplificationNeeded(true);
+						} else {
+							startRadicalSimplificationAnimation();
+						}
 					}, 400);
 				}, 400);
 			}, 600);
@@ -1091,7 +1111,13 @@ const SimplifySqRtPrime = () => {
 			// Check if radical simplification is needed (more than 1 number under radical)
 			setTimeout(() => {
 				if (window.randomClicked) return;
-				startRadicalSimplificationAnimation();
+				// If there are no radical numbers or only 1, we're done
+				const remainingRadicalNumbers = visibleIndices.map(i => factors[i]);
+				if (remainingRadicalNumbers.length <= 1) {
+					setNoSimplificationNeeded(true);
+				} else {
+					startRadicalSimplificationAnimation();
+				}
 			}, 100);
 		}
 	};
@@ -1101,6 +1127,9 @@ const SimplifySqRtPrime = () => {
 		// In the simplified step, we need to look at the actual numbers under the radical
 		// These are the numbers that are still visible in the simplified step
 		const numbersUnderRadical = visibleIndices.map(i => factors[i]);
+		
+		console.log('Radical animation - numbers under radical:', numbersUnderRadical);
+		console.log('Radical animation - visibleIndices:', visibleIndices);
 		
 		// If there are no numbers under the radical, no simplification needed
 		if (numbersUnderRadical.length === 0) {
@@ -1114,29 +1143,66 @@ const SimplifySqRtPrime = () => {
 			return;
 		}
 		
-		// Always animate the first two numbers (rightmost into leftmost)
-		const pairIndices = [0, 2]; // First two numbers in expression array
+		// Animate all numbers to the leftmost position
+		// Get the actual expression indices for numbers (skip multiplication symbols)
+		const numberIndices = expression
+			.map((item, index) => item.type === 'number' ? index : null)
+			.filter(index => index !== null);
 		const survivor = 0; // Keep the first one
 		
-		// Start the radical combine animation - just the combine phase
-		setRadicalCombineAnim({ indices: pairIndices, survivor, phase: 'combine' });
+		console.log('Radical animation - numberIndices:', numberIndices);
+		console.log('Radical animation - survivor:', survivor);
+		console.log('Radical animation - expression length:', expression.length);
+		console.log('Radical animation - expression:', expression);
 		
+		// Start sequential radical combine animation
+		setRadicalAnimationStep(1); // Start with step 1 (second number)
+		setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1]], survivor: 0, phase: 'combine' });
+		
+		// After first overlap, animate the third number
 		setTimeout(() => {
 			if (window.randomClicked) return;
-			setRadicalFadeOut(true);
+			if (numberIndices.length > 2) {
+				setRadicalAnimationStep(2); // Step 2 (third number)
+				setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1], numberIndices[2]], survivor: 0, phase: 'combine' });
+			}
 			
-			// Show product after fade out
+			// After second overlap, animate the fourth number
 			setTimeout(() => {
 				if (window.randomClicked) return;
-				setRadicalShowProduct(true);
+				if (numberIndices.length > 3) {
+					setRadicalAnimationStep(3); // Step 3 (fourth number)
+					setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1], numberIndices[2], numberIndices[3]], survivor: 0, phase: 'combine' });
+				}
 				
-				// Set simplified state when animation is complete
+				// After third overlap, animate the fifth number
 				setTimeout(() => {
 					if (window.randomClicked) return;
-					setNoSimplificationNeeded(true);
+					if (numberIndices.length > 4) {
+						setRadicalAnimationStep(4); // Step 4 (fifth number)
+						setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1], numberIndices[2], numberIndices[3], numberIndices[4]], survivor: 0, phase: 'combine' });
+					}
+					
+					// After all overlaps, fade out
+					setTimeout(() => {
+						if (window.randomClicked) return;
+						setRadicalFadeOut(true);
+						
+						// Show product after fade out
+						setTimeout(() => {
+							if (window.randomClicked) return;
+							setRadicalShowProduct(true);
+							
+							// Set simplified state when animation is complete
+							setTimeout(() => {
+								if (window.randomClicked) return;
+								setNoSimplificationNeeded(true);
+							}, 400);
+						}, 400);
+					}, 400);
 				}, 400);
 			}, 400);
-		}, 800);
+		}, 400);
 	};
 
 	const nextDisabled = animate || (showFactors && countAvailablePairs() > 0) || showSimplified;
@@ -1170,7 +1236,7 @@ const SimplifySqRtPrime = () => {
 			<div className="prime-factorization-inner center-content">
 				{number && !showFactors && (
 					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}${fadeOut ? ' sqrt-fade-out' : ''}`}>
-						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors, coefficientSlideAnim: false, coefficientFadeOutAnim: false, showProductAnim: false, radicalCombineAnim: null, radicalFadeOut: false, radicalShowProduct: false, noSimplificationNeeded: false })}
+						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors, coefficientSlideAnim: false, coefficientFadeOutAnim: false, showProductAnim: false, radicalCombineAnim: null, radicalFadeOut: false, radicalShowProduct: false, noSimplificationNeeded: false, radicalAnimationStep: 0, numberIndices: [] })}
 					</div>
 				)}
 				{number && !showFactors && (
@@ -1188,7 +1254,7 @@ const SimplifySqRtPrime = () => {
 								{(() => {
 									if (visibleIndices.length === 0) {
 										// No numbers under radical - use simple span
-										const textColor = '#000';
+										const textColor = noSimplificationNeeded ? '#008545' : '#000';
 										return (
 											<span style={{ fontFamily: 'Proxima Nova, Arial, sans-serif', fontWeight: 400, fontSize: 38, color: textColor, lineHeight: '1.1', verticalAlign: 'middle', display: 'inline-block', minWidth: '32px', textAlign: 'center' }}>
 												{outsideNumbers && outsideNumbers.length > 0 ? outsideNumbers.join(' × ') : '1'}
@@ -1213,7 +1279,9 @@ const SimplifySqRtPrime = () => {
 											radicalCombineAnim,
 											radicalFadeOut,
 											radicalShowProduct,
-											noSimplificationNeeded
+											noSimplificationNeeded,
+											radicalAnimationStep,
+											numberIndices: expression.map((item, index) => item.type === 'number' ? index : null).filter(index => index !== null)
 										});
 									}
 								})()}
@@ -1256,7 +1324,9 @@ const SimplifySqRtPrime = () => {
 										radicalCombineAnim: null,
 										radicalFadeOut: false,
 										radicalShowProduct: false,
-										noSimplificationNeeded: false
+										noSimplificationNeeded: false,
+										radicalAnimationStep: 0,
+										numberIndices: expression.map((item, index) => item.type === 'number' ? index : null).filter(index => index !== null)
 									})
 								)}
 							</div>
