@@ -776,6 +776,7 @@ const SimplifySqRtPrime = () => {
 	const [noSimplificationNeeded, setNoSimplificationNeeded] = useState(false); // Already simplified
 	const [radicalAnimationStep, setRadicalAnimationStep] = useState(0); // Track animation step
 	const [radicalLineShrink, setRadicalLineShrink] = useState(false); // Shrink radical line to fit product
+	const [centerFinalExpression, setCenterFinalExpression] = useState(false); // Center the final simplified expression
 
 
 
@@ -857,6 +858,7 @@ const SimplifySqRtPrime = () => {
 		setNoSimplificationNeeded(false);
 		setRadicalAnimationStep(0);
 		setRadicalLineShrink(false);
+		setCenterFinalExpression(false);
 
 		
 		// Clear the flag after a short delay
@@ -965,6 +967,8 @@ const SimplifySqRtPrime = () => {
 			setRadicalFadeOut(false);
 			setRadicalShowProduct(false);
 			setNoSimplificationNeeded(false);
+			setRadicalLineShrink(false);
+			setCenterFinalExpression(false);
 		} else if (showFactors) {
 			// If we're at the prime factorization step, go back to beginning
 			setShowFactors(false);
@@ -1210,10 +1214,11 @@ const SimplifySqRtPrime = () => {
 							if (window.randomClicked) return;
 							setRadicalShowProduct(true);
 							
-							// Shrink radical line to fit product after product fades in
+							// Shrink radical line and center final expression at the same time
 							setTimeout(() => {
 								if (window.randomClicked) return;
 								setRadicalLineShrink(true);
+								setCenterFinalExpression(true);
 								
 								// Set simplified state when animation is complete
 								setTimeout(() => {
@@ -1273,7 +1278,7 @@ const SimplifySqRtPrime = () => {
 				{showFactors && showSimplified ? (
 					<>
 						<div className="prime-factors-fade-in center-content">
-							<div className="factor-string-container custom-sqrt-radical">
+							<div className={`factor-string-container custom-sqrt-radical ${centerFinalExpression ? 'center-final-expression' : ''}`}>
 								{(() => {
 									if (visibleIndices.length === 0) {
 										// No numbers under radical - use simple span

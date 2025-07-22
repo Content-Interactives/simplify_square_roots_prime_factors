@@ -565,4 +565,17 @@ button.prime-factorization-next-btn.disabled,
   }
 }
 
+@keyframes centerFinalExpression {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(60px);
+  }
+}
+
+.center-final-expression {
+  animation: centerFinalExpression 0.4s ease forwards;
+}
+
  
