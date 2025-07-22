@@ -38,7 +38,7 @@ function getPrimeFactors(n) {
 }
 
 // Helper for SVG radical rendering (shared by both steps)
-function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false, coefficientSlideAnim = false, coefficientFadeOutAnim = false, showProductAnim = false, radicalCombineAnim = null, radicalFadeOut = false, radicalShowProduct = false, noSimplificationNeeded = false, radicalAnimationStep = 0, numberIndices = [] }) {
+function renderSVGStepRadical({ coefficient, numbers, highlightable = false, highlightedIndices = [], handleNumberClick = null, visibleIndices = [], animatingPairIndices = [], combineAnim = null, factors = [], color = '#000', radicalColor = '#000', disabled = false, coefficientSlideAnim = false, coefficientFadeOutAnim = false, showProductAnim = false, radicalCombineAnim = null, radicalFadeOut = false, radicalShowProduct = false, noSimplificationNeeded = false, radicalAnimationStep = 0, numberIndices = [], radicalLineShrink = false }) {
   // Defensive: ensure coefficient is always an array
   let coeffArray = [];
   if (Array.isArray(coefficient)) {
@@ -489,14 +489,29 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
               className={radicalShiftClass}
               style={{ '--radical-shift-x': `${radicalShiftX}px` }}
             >
+              {/* Vertical part of radical (hook and vertical line) */}
               <polyline
-                points={`10,${radicalHook} 18,${radicalHookEnd} 32,${radicalTop} ${radicalBarXEnd},${radicalBarY}`}
+                points={`10,${radicalHook} 18,${radicalHookEnd} 32,${radicalTop}`}
                 stroke={finalRadicalColor}
                 strokeWidth="4"
                 fill="none"
                 strokeLinejoin="round"
                 style={{ 
                   transform: 'translateZ(0)'
+                }}
+              />
+              {/* Horizontal line of radical - can be animated separately */}
+              <line
+                x1="32"
+                y1={radicalTop}
+                x2={radicalBarXEnd}
+                y2={radicalBarY}
+                stroke={finalRadicalColor}
+                strokeWidth="4"
+                style={{ 
+                  transform: `translateZ(0) ${radicalLineShrink ? 'scaleX(0.3)' : 'scaleX(1)'}`,
+                  transformOrigin: '32px center',
+                  transition: radicalLineShrink ? 'transform 0.4s ease' : 'none'
                 }}
               />
               {expression.length > 0 && expression.map((item, index) => {
@@ -760,6 +775,7 @@ const SimplifySqRtPrime = () => {
 	const [radicalShowProduct, setRadicalShowProduct] = useState(false); // Show radical product
 	const [noSimplificationNeeded, setNoSimplificationNeeded] = useState(false); // Already simplified
 	const [radicalAnimationStep, setRadicalAnimationStep] = useState(0); // Track animation step
+	const [radicalLineShrink, setRadicalLineShrink] = useState(false); // Shrink radical line to fit product
 
 
 
@@ -840,6 +856,7 @@ const SimplifySqRtPrime = () => {
 		setRadicalShowProduct(false);
 		setNoSimplificationNeeded(false);
 		setRadicalAnimationStep(0);
+		setRadicalLineShrink(false);
 
 		
 		// Clear the flag after a short delay
@@ -1193,10 +1210,16 @@ const SimplifySqRtPrime = () => {
 							if (window.randomClicked) return;
 							setRadicalShowProduct(true);
 							
-							// Set simplified state when animation is complete
+							// Shrink radical line to fit product after product fades in
 							setTimeout(() => {
 								if (window.randomClicked) return;
-								setNoSimplificationNeeded(true);
+								setRadicalLineShrink(true);
+								
+								// Set simplified state when animation is complete
+								setTimeout(() => {
+									if (window.randomClicked) return;
+									setNoSimplificationNeeded(true);
+								}, 400);
 							}, 400);
 						}, 400);
 					}, 400);
@@ -1236,7 +1259,7 @@ const SimplifySqRtPrime = () => {
 			<div className="prime-factorization-inner center-content">
 				{number && !showFactors && (
 					<div className={`center-content sqrt-animate${animate ? ' sqrt-animate-up-fade' : ''}${fadeOut ? ' sqrt-fade-out' : ''}`}>
-						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors, coefficientSlideAnim: false, coefficientFadeOutAnim: false, showProductAnim: false, radicalCombineAnim: null, radicalFadeOut: false, radicalShowProduct: false, noSimplificationNeeded: false, radicalAnimationStep: 0, numberIndices: [] })}
+						{renderSVGStepRadical({ coefficient: 1, numbers: [number], factors, coefficientSlideAnim: false, coefficientFadeOutAnim: false, showProductAnim: false, radicalCombineAnim: null, radicalFadeOut: false, radicalShowProduct: false, noSimplificationNeeded: false, radicalAnimationStep: 0, numberIndices: [], radicalLineShrink: false })}
 					</div>
 				)}
 				{number && !showFactors && (
@@ -1281,7 +1304,8 @@ const SimplifySqRtPrime = () => {
 											radicalShowProduct,
 											noSimplificationNeeded,
 											radicalAnimationStep,
-											numberIndices: expression.map((item, index) => item.type === 'number' ? index : null).filter(index => index !== null)
+											numberIndices: expression.map((item, index) => item.type === 'number' ? index : null).filter(index => index !== null),
+											radicalLineShrink
 										});
 									}
 								})()}
@@ -1326,7 +1350,8 @@ const SimplifySqRtPrime = () => {
 										radicalShowProduct: false,
 										noSimplificationNeeded: false,
 										radicalAnimationStep: 0,
-										numberIndices: expression.map((item, index) => item.type === 'number' ? index : null).filter(index => index !== null)
+										numberIndices: expression.map((item, index) => item.type === 'number' ? index : null).filter(index => index !== null),
+										radicalLineShrink: false
 									})
 								)}
 							</div>
