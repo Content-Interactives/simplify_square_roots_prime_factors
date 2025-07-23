@@ -806,7 +806,6 @@ const SimplifySqRtPrime = () => {
 		// Only disable button during pair selection animations (combineAnim)
 		const running = combineAnim !== null;
 		
-		console.log('Button enabled:', !running);
 		return running;
 	};
 
@@ -898,8 +897,6 @@ const SimplifySqRtPrime = () => {
 	};
 
 	const handleNextClick = () => {
-		console.log('Next button clicked - animation start');
-		
 		// If we're at the simplified step, stay there
 		if (showSimplified) {
 			return;
@@ -963,7 +960,6 @@ const SimplifySqRtPrime = () => {
 					setFadeOutFirstStep(false);
 					setAnimate(false);
 					setShowSimplified(false);
-					console.log('Next button animation - fade out end');
 				}, 350);
 			}, 100);
 			return;
@@ -985,7 +981,6 @@ const SimplifySqRtPrime = () => {
 			setFadeOutFirstStep(false);
 			setAnimate(false);
 			setShowSimplified(false);
-			console.log('Next button animation - fade out end');
 		}, 350);
 	};
 
@@ -1045,7 +1040,6 @@ const SimplifySqRtPrime = () => {
 					const radicalTop = 80;
 					const numberWidth = 30;
 					
-					console.log('Number pair animation - combine start');
 					setCombineAnim({ indices: [firstIdx, index], survivor, phase: 'up' });
 					
 					setTimeout(() => {
@@ -1065,7 +1059,6 @@ const SimplifySqRtPrime = () => {
 									setRemovedIndices(prev => [...prev, firstIdx, index]);
 									setOutsideNumbers(prev => [...prev, factors[survivor]]);
 									setCombineAnim(null);
-									console.log('Number pair animation - combine end');
 								}, 400);
 							}, 400);
 						}, 500);
@@ -1137,20 +1130,17 @@ const SimplifySqRtPrime = () => {
 		
 		// If there are coefficients that need to simplify (2 or more coefficients)
 		if (coefficients.length >= 2) {
-			console.log('Coefficient animation - slide start');
 			// Start coefficient overlap animation
 			setCoefficientSlideAnim(true);
 			
 			// After a short delay, fade out the coefficients
 			setTimeout(() => {
 				if (window.randomClicked) return;
-				console.log('Coefficient animation - fade out start');
 				setCoefficientFadeOutAnim(true);
 				
 				// Show product after fade out
 				setTimeout(() => {
 					if (window.randomClicked) return;
-					console.log('Coefficient animation - product show start');
 					setShowProductAnim(true);
 					
 					// Check if there are more than 1 number under radical after coefficient simplification
@@ -1169,7 +1159,6 @@ const SimplifySqRtPrime = () => {
 									// Keep showProductAnim true so the product stays visible
 									setCoefficientSlideAnim(false); // Clear slide animation state
 									setCoefficientFadeOutAnim(false); // Clear fade out animation state
-									console.log('Coefficient animation - product show end');
 								}, 400); // Wait for fade-in animation to complete
 							}, 400);
 						} else {
@@ -1223,7 +1212,6 @@ const SimplifySqRtPrime = () => {
 			.filter(index => index !== null);
 		const survivor = 0; // Keep the first one
 		
-		console.log('Radical simplification animation - combine start');
 		// Start sequential radical combine animation
 		setRadicalAnimationStep(1); // Start with step 1 (second number)
 		setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1]], survivor: 0, phase: 'combine' });
@@ -1255,19 +1243,16 @@ const SimplifySqRtPrime = () => {
 					// After all overlaps, fade out
 					setTimeout(() => {
 						if (window.randomClicked) return;
-						console.log('Radical simplification animation - fade out start');
 						setRadicalFadeOut(true);
 						
 						// Show product after fade out
 						setTimeout(() => {
 							if (window.randomClicked) return;
-							console.log('Radical simplification animation - product show start');
 							setRadicalShowProduct(true);
 							
 							// Shrink radical line and center final expression at the same time
 							setTimeout(() => {
 								if (window.randomClicked) return;
-								console.log('Radical simplification animation - line shrink start');
 								setRadicalLineShrink(true);
 								setCenterFinalExpression(true);
 								
@@ -1281,7 +1266,6 @@ const SimplifySqRtPrime = () => {
 									// Keep radicalShowProduct true so the product stays visible
 									// Keep radicalLineShrink true so the line stays short
 									// Keep centerFinalExpression true so the expression stays centered
-									console.log('Radical simplification animation - line shrink end');
 								}, 400);
 							}, 400);
 						}, 400);
