@@ -76,6 +76,15 @@
   background: #00ae5a;
 }
 
+.prime-factorization-random-btn.disabled {
+  pointer-events: none;
+}
+
+.prime-factorization-random-btn.disabled:hover {
+  background: #008545;
+  cursor: not-allowed;
+}
+
 .prime-factorization-next-btn {
   position: absolute;
   bottom: 16px;
