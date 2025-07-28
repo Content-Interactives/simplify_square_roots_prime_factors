@@ -107,8 +107,8 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
   const svgWidth = 480;
   // Calculate the content width (radical + numbers + symbols)
   const contentWidth = radicalOffset + (expression.length * numberWidth) + radicalStart;
-  // Calculate the offset to center the content
-  const centerOffset = Math.max(0, (svgWidth - contentWidth) / 2);
+  // Calculate the offset to center the content, with 10px left shift
+  const centerOffset = Math.max(0, (svgWidth - contentWidth) / 2 - 15);
   
 
   // Set the viewBox to match the new height
