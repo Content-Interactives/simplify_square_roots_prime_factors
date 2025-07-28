@@ -615,18 +615,18 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                     
                     if (radicalCombineAnim.phase === 'combine') {
                       if (index !== survivor) {
-                        // Check if this number should be animated based on current step
-                        const numberPosition = numberIndices.indexOf(index);
-                        const shouldAnimate = numberPosition <= radicalAnimationStep;
+                        // Check if this element should be animated based on current step
+                        // Elements animate sequentially from left to right (index 1, 2, 3, etc.)
+                        const shouldAnimate = index <= radicalAnimationStep;
                         
                         if (shouldAnimate) {
-                          // All numbers to the right of the survivor slide left to the leftmost position
+                          // All elements to the right of the survivor slide left to the leftmost position
                           const slideX = (survivor - index) * numberWidth;
                           combineClass = 'number-slide-to-combine';
                           combineStyle = { '--combine-x': `${slideX}px` };
                           
                         } else {
-                          // Keep this number in its original position for now
+                          // Keep this element in its original position for now
                           combineClass = '';
                           combineStyle = {};
                           
@@ -687,6 +687,32 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                     return null;
                   }
                   
+                  // Radical simplification animation logic for multiplication symbols
+                  let combineClass = '';
+                  let combineStyle = {};
+                  
+                  if (radicalCombineAnim && radicalCombineAnim.phase === 'combine') {
+                    // Check if this multiplication symbol should be animated based on current step
+                    // Elements animate sequentially from left to right (index 1, 2, 3, etc.)
+                    const shouldAnimate = index <= radicalAnimationStep;
+                    
+                    if (shouldAnimate) {
+                      // All elements to the right of the survivor slide left to the leftmost position
+                      const slideX = (0 - index) * numberWidth; // Move to position 0
+                      combineClass = 'number-slide-to-combine';
+                      combineStyle = { '--combine-x': `${slideX}px` };
+                    } else {
+                      // Keep this element in its original position for now
+                      combineClass = '';
+                      combineStyle = {};
+                    }
+                  }
+                  
+                  // Apply fade out for multiplication symbols
+                  if (radicalFadeOut) {
+                    combineStyle = { ...combineStyle, opacity: 0, transition: 'opacity 0.4s ease' };
+                  }
+                  
                   return (
                     <text
                       key={item.id}
@@ -698,8 +724,10 @@ function renderSVGStepRadical({ coefficient, numbers, highlightable = false, hig
                       fontWeight="400"
                       fill={finalColor}
                       style={{
-                        transform: 'translateZ(0)'
+                        transform: 'translateZ(0)',
+                        ...combineStyle
                       }}
+                      className={combineClass}
                     >
                       {item.value}
                     </text>
@@ -1205,74 +1233,63 @@ const SimplifySqRtPrime = () => {
 			return;
 		}
 		
-		// Animate all numbers to the leftmost position
-		// Get the actual expression indices for numbers (skip multiplication symbols)
-		const numberIndices = expression
-			.map((item, index) => item.type === 'number' ? index : null)
-			.filter(index => index !== null);
-		const survivor = 0; // Keep the first one
+		// Create an array of all elements (numbers and symbols) in their display order
+		const allElements = [];
+		expression.forEach((item, index) => {
+			allElements.push({ ...item, originalIndex: index });
+		});
 		
-		// Start sequential radical combine animation
-		setRadicalAnimationStep(1); // Start with step 1 (second number)
-		setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1]], survivor: 0, phase: 'combine' });
+		// Start with step 1 (second element, index 1)
+		setRadicalAnimationStep(1);
+		setRadicalCombineAnim({ indices: allElements.map(el => el.originalIndex), survivor: 0, phase: 'combine' });
 		
-		// After first overlap, animate the third number
-		setTimeout(() => {
+		// Animate each element sequentially
+		let currentStep = 1;
+		const animateNextElement = () => {
 			if (window.randomClicked) return;
-			if (numberIndices.length > 2) {
-				setRadicalAnimationStep(2); // Step 2 (third number)
-				setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1], numberIndices[2]], survivor: 0, phase: 'combine' });
-			}
 			
-			// After second overlap, animate the fourth number
-			setTimeout(() => {
-				if (window.randomClicked) return;
-				if (numberIndices.length > 3) {
-					setRadicalAnimationStep(3); // Step 3 (fourth number)
-					setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1], numberIndices[2], numberIndices[3]], survivor: 0, phase: 'combine' });
-				}
+			currentStep++;
+			if (currentStep < allElements.length) {
+				setRadicalAnimationStep(currentStep);
+				setRadicalCombineAnim({ indices: allElements.map(el => el.originalIndex), survivor: 0, phase: 'combine' });
 				
-				// After third overlap, animate the fifth number
+				setTimeout(animateNextElement, 400);
+			} else {
+				// After all elements have animated, fade out
 				setTimeout(() => {
 					if (window.randomClicked) return;
-					if (numberIndices.length > 4) {
-						setRadicalAnimationStep(4); // Step 4 (fifth number)
-						setRadicalCombineAnim({ indices: [numberIndices[0], numberIndices[1], numberIndices[2], numberIndices[3], numberIndices[4]], survivor: 0, phase: 'combine' });
-					}
+					setRadicalFadeOut(true);
 					
-					// After all overlaps, fade out
+					// Show product after fade out
 					setTimeout(() => {
 						if (window.randomClicked) return;
-						setRadicalFadeOut(true);
+						setRadicalShowProduct(true);
 						
-						// Show product after fade out
+						// Shrink radical line and center final expression at the same time
 						setTimeout(() => {
 							if (window.randomClicked) return;
-							setRadicalShowProduct(true);
+							setRadicalLineShrink(true);
+							setCenterFinalExpression(true);
 							
-							// Shrink radical line and center final expression at the same time
+							// Set simplified state when animation is complete
 							setTimeout(() => {
 								if (window.randomClicked) return;
-								setRadicalLineShrink(true);
-								setCenterFinalExpression(true);
-								
-								// Set simplified state when animation is complete
-								setTimeout(() => {
-									if (window.randomClicked) return;
-									setNoSimplificationNeeded(true);
-									// Clear animation states but keep the final visual states
-									setRadicalCombineAnim(null);
-									setRadicalFadeOut(false);
-									// Keep radicalShowProduct true so the product stays visible
-									// Keep radicalLineShrink true so the line stays short
-									// Keep centerFinalExpression true so the expression stays centered
-								}, 400);
+								setNoSimplificationNeeded(true);
+								// Clear animation states but keep the final visual states
+								setRadicalCombineAnim(null);
+								setRadicalFadeOut(false);
+								// Keep radicalShowProduct true so the product stays visible
+								// Keep radicalLineShrink true so the line stays short
+								// Keep centerFinalExpression true so the expression stays centered
 							}, 400);
 						}, 400);
 					}, 400);
 				}, 400);
-			}, 400);
-		}, 400);
+			}
+		};
+		
+		// Start the sequential animation
+		setTimeout(animateNextElement, 400);
 	};
 
 	const nextDisabled = animate || (showFactors && countAvailablePairs() > 0) || showSimplified;
