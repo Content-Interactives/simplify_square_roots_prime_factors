@@ -1,31 +1,47 @@
-# simplify_square_roots_prime_factors
-live site: <a href="https://content-interactives.github.io/simplify_square_roots_prime_factors/" target="_blank"> Simplify Square Roots Using Prime Factorization</a>
+# Simplify Square Roots Using Prime Factorization Interactive
 
-## Simplify Square Roots using the Prime Factorization Method
+This repository contains the code for the **Simplify Square Roots Using Prime Factorization Interactive**, designed to help students explore and understand the process of simplifying square roots using prime factorization through engaging visuals and instant feedback.
 
+---
 
-## Overview
+## 🔗 Live Interactive
 
-This interactive will walk students through simplifying square roots using the prime factorization method.
-See second interactive in this read for inspiration: https://flexbooks.ck12.org/cbook/ck-12-interactive-middle-school-math-8-for-ccss/section/10.3/primary/lesson/simplifying-square-roots-and-cube-roots-msm8-ccss/
+Try it out here:  
+👉 https://content-interactives.github.io/simplify_square_roots_prime_factors/
 
-## How it Works
-### Step 1
-- It will first show the given number in the square root. 
-- The number should be a random number between 1 and 200 and able to be simplified (at least 1 pair of prime factors. See full list below)
+---
 
-### Step 2
-- After clicking the next arrow `>`, the number is shown to split into its prime factors. 
-- Students are then to click on all pairs of prime factors. For each pair, there will be an animation of the numbers combining as they move out of the square root and to the left.
-- Clicked numbers can highlight. If a third number is clicked, unhighlight the first one.
-- Once two are correctly highlighted, start the animation automatically.
+## 🌐 Where This Interactive Is Being Used
 
-### Step 3
-- Once complete, the remaining numbers on each side will combine showing the simplified square root.
-- Allow students to go back through previous steps with a back arrow `<`.
+This interactive is currently featured in the following locations:
 
+- <img width="20" height="20" alt="image" src="https://github.com/user-attachments/assets/5d12571f-8e12-4441-98ab-c0bc94069a96" /> **CK-12 Intent Response**  
+  - 👉 PRODUCTION: [PENDING]  
+  - 👉 MASTER: [PENDING]
+- 📘 **CK-12 Flexbooks**  
+  - 👉 [PENDING: Book/lesson link where this interactive appears]
 
-Have Flexi with a speech bubble explain some of the steps. "Split the number into its prime factors." "Find all the matching pairs." "It's simplified!"
+---
 
-List of simplifiable numbers:
-`4, 8, 9, 12, 16, 18, 20, 24, 25, 27, 28, 32, 36, 40, 44, 45, 48, 49, 50, 52, 54, 56, 60, 63, 64, 72, 75, 76, 80, 81, 84, 88, 90, 96, 98, 100, 104, 108, 112, 116, 117, 120, 121, 124, 125, 126, 128, 132, 135, 136, 140, 144, 147, 148, 150, 152, 153, 156, 160, 162, 164, 168, 169, 171, 172, 176, 180, 184, 188, 189, 192, 196, 198, 200`
+## 📚 Standards & Subjects
+
+This interactive aligns with the following topics and standards:
+
+- **📂 Subject Area**: High School Math (Algebra I)  
+- **🧮 Topic**: Simplifying Square Roots Using Prime Factorization  
+- **📏 Common Core**:  
+  - **CCSS.MATH.CONTENT.8.EE.A.2** – Use square roots and cube roots to solve real-world and mathematical problems.  
+  - **CCSS.MATH.CONTENT.8.EE.A.3** – Use numbers expressed in the form of a single digit times an integer power of 10 to estimate very large or very small quantities, and to express how many times as much one is than the other.  
+  - **CCSS.MATH.CONTENT.8.EE.A.4** – Perform operations with numbers expressed in scientific notation, including problems where both decimal and scientific notation are used.  
+  - **CCSS.MATH.CONTENT.8.EE.B.5** – Graph proportional relationships, interpreting the unit rate as the slope of the graph. Compare two different proportional relationships represented in different ways.  
+  - **CCSS.MATH.CONTENT.8.EE.B.6** – Use similar triangles to explain the constant of proportionality (unit rate) in the context of scaling.  
+  - **CCSS.MATH.CONTENT.8.EE.C.7** – Solve linear equations in one variable.  
+  - **CCSS.MATH.CONTENT.8.EE.C.8** – Analyze and solve pairs of simultaneous linear equations.
+
+---
+
+## 🛠️ Developer Notes
+
+- Built with: React, Vite, TypeScript, Tailwind CSS  
+- Deployed via: GitHub Pages  
+- See `index.html` and supporting assets in `src/` and `public/` folders
